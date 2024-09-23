@@ -29,6 +29,12 @@ class ChecklistViewController: UITableViewController {
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "ActivityCell")
     }
 
+    
+    
+    @IBAction func btnContinue(_ sender: UIButton) {
+        
+        
+    }
     // MARK: - Table view data source
 
     override func numberOfSections(in tableView: UITableView) -> Int {
