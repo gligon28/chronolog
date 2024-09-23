@@ -10,17 +10,20 @@ import UIKit
 class ChecklistViewController: UITableViewController {
 
     var activities: [Activity] = [
-        Activity(name: "Work", isSelected: false),
-        Activity(name: "School", isSelected: false),
-        Activity(name: "Chores", isSelected: false),
-        Activity(name: "Exercise", isSelected: false),
-        Activity(name: "Sleep", isSelected: false),
-        Activity(name: "Social Responsibilities", isSelected: false),
-        Activity(name: "Hobbies", isSelected: false),
-        Activity(name: "Meal Planning", isSelected: false),
-        Activity(name: "Sleep", isSelected: false),
-        Activity(name: "Commute", isSelected: false),
-        Activity(name: "Self-Care", isSelected: false)
+        Activity(name: "Work", isSelected: false, questions: [
+                Question(text: "What days of the week do you work?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "How long are your shifts?", inputType: .text)
+            ])
+//        Activity(name: "School", isSelected: false, questions: ["How many classes are you taking?", "What time are the classes"]),
+//        Activity(name: "Exercise", isSelected: false, questions: ["What days do you exercise?", "How long are your workouts"]),
+//        Activity(name: "Chores", isSelected: false),
+//        Activity(name: "Sleep", isSelected: false),
+//        Activity(name: "Social Responsibilities", isSelected: false),
+//        Activity(name: "Hobbies", isSelected: false),
+//        Activity(name: "Meal Planning", isSelected: false),
+//        Activity(name: "Sleep", isSelected: false),
+//        Activity(name: "Commute", isSelected: false),
+//        Activity(name: "Self-Care", isSelected: false)
     ]
     
     override func viewDidLoad() {
@@ -32,9 +35,22 @@ class ChecklistViewController: UITableViewController {
     
     
     @IBAction func btnContinue(_ sender: UIButton) {
-        
+        let selectedActivities = activities.filter { $0.isSelected }
+            if let firstActivity = selectedActivities.first {
+                navigateToQuestions(for: firstActivity, remainingActivities: Array(selectedActivities.dropFirst()))
+            }
         
     }
+    
+    func navigateToQuestions(for activity: Activity, remainingActivities: [Activity]) {
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+            if let questionsVC = storyboard.instantiateViewController(withIdentifier: "QuestionsViewController") as? QuestionsViewController {
+                questionsVC.activity = activity // Pass the selected activity
+                questionsVC.remainingActivities = remainingActivities
+                navigationController?.pushViewController(questionsVC, animated: true)
+        }
+    }
+
     // MARK: - Table view data source
 
     override func numberOfSections(in tableView: UITableView) -> Int {
