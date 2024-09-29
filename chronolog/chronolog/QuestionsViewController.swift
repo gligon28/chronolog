@@ -6,6 +6,9 @@
 //
 
 import UIKit
+import FirebaseAuth
+import Firebase
+import FirebaseFirestore
 
 class QuestionsViewController: UIViewController {
 
@@ -114,6 +117,8 @@ class QuestionsViewController: UIViewController {
         // Clear input for the next question
         txtAnswer.text = ""
         multipleSelectionButtons.forEach { $0.tag = 0; $0.backgroundColor = .clear }
+        
+        saveDataToFirestore()
 
         // Check if there are more questions in the current activity
         if currentQuestionIndex < activity.questions.count - 1 {
@@ -130,6 +135,7 @@ class QuestionsViewController: UIViewController {
     }
     
     func moveToNextActivityOrFinish() {
+        saveDataToFirestore()
         if let nextActivity = remainingActivities.first {
             // There are more activities, navigate to the next one
             let nextRemainingActivities = Array(remainingActivities.dropFirst())
@@ -152,5 +158,31 @@ class QuestionsViewController: UIViewController {
     func finishSchedule() {
         print("All questions answered:", answers)
     }
+    
+    func saveDataToFirestore() {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            print("Error: User is not authenticated")
+            return
+        }
+
+        let db = Firestore.firestore()
+        // Each user has their own document, and each activity has a document within a subcollection
+        let userRef = db.collection("userResponses").document(userId)
+        let activityRef = userRef.collection("activities").document(activity.name)
+
+        let dataToSave = [
+            "answers": answers,
+            "timestamp": FieldValue.serverTimestamp()
+        ] as [String : Any]
+
+        activityRef.setData(dataToSave, merge: true) { error in
+            if let error = error {
+                print("Error saving data to Firestore: \(error.localizedDescription)")
+            } else {
+                print("Data successfully saved to Firestore for activity \(self.activity.name).")
+            }
+        }
+    }
+
 
 }
