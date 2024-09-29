@@ -13,6 +13,7 @@ class QuestionsViewController: UIViewController {
     var remainingActivities: [Activity] = []
     var currentQuestionIndex = 0
     var answers: [String: Any] = [:] // Dictionary to store answers
+    var hasAnsweredInitialQuestions: Bool = false
 
     
     //@IBOutlet weak var questionLabel: UILabel!
@@ -25,20 +26,29 @@ class QuestionsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Display the first question
         displayQuestion()
     }
+    
 
     func displayQuestion() {
+        lblActivity.text = activity.name
         let currentQuestion = activity.questions[currentQuestionIndex]
         lblQuestion.text = currentQuestion.text
+        
+        // Adjust the keyboard type based on the type of question
+        if currentQuestion.text.contains("How many hours") || currentQuestion.text.contains("How much time") {
+            // Set the keyboard to number pad for hour-based questions
+            txtAnswer.keyboardType = .numberPad
+        } else {
+            // Set the default keyboard for other questions
+            txtAnswer.keyboardType = .default
+        }
+            
         switch currentQuestion.inputType {
         case .text:
-            // Show text input
             txtAnswer.isHidden = false
             stkMultipleSelectionView.isHidden = true
         case .multipleSelection(let options):
-            // Show multiple selection (checkboxes or buttons)
             txtAnswer.isHidden = true
             stkMultipleSelectionView.isHidden = false
             setupMultipleSelection(options: options)
@@ -63,33 +73,71 @@ class QuestionsViewController: UIViewController {
     }
 
 
+    func showAddAnotherPrompt() {
+        let alert = UIAlertController(title: "Add Another Entry", message: "Would you like to add another entry for \(activity.name)?", preferredStyle: .alert)
+            
+        alert.addAction(UIAlertAction(title: "Add Another", style: .default, handler: { _ in
+            self.currentQuestionIndex = 0
+            self.hasAnsweredInitialQuestions = false
+            self.displayQuestion()
+        }))
+            
+        alert.addAction(UIAlertAction(title: "Continue", style: .cancel, handler: { _ in
+            if let nextActivity = self.remainingActivities.first {
+                // Move to the next activity if there are remaining activities
+                let nextRemainingActivities = Array(self.remainingActivities.dropFirst())
+                self.navigateToQuestions(for: nextActivity, remainingActivities: nextRemainingActivities)
+            } else {
+                // Finish the questionnaire if there are no more activities
+                self.finishSchedule()
+            }
+        }))
+            
+        present(alert, animated: true, completion: nil)
+    }
+        
+    
     @IBAction func btnContinueQuestions(_ sender: UIButton) {
         let currentQuestion = activity.questions[currentQuestionIndex]
 
+        // Store the answer based on input type
         switch currentQuestion.inputType {
             case .text:
                 if let answer = txtAnswer.text, !answer.isEmpty {
                     answers[currentQuestion.text] = answer
-            }
+                }
             case .multipleSelection:
                 let selectedOptions = multipleSelectionButtons.compactMap { $0.tag == 1 ? $0.titleLabel?.text : nil }
                 answers[currentQuestion.text] = selectedOptions
-            }
-            // Clear input for next question
-            txtAnswer.text = ""
-            multipleSelectionButtons.forEach { $0.tag = 0; $0.backgroundColor = .clear }
-            // Proceed to next question or activity
-            if currentQuestionIndex < activity.questions.count - 1 {
-                currentQuestionIndex += 1
-                displayQuestion()
+        }
+
+        // Clear input for the next question
+        txtAnswer.text = ""
+        multipleSelectionButtons.forEach { $0.tag = 0; $0.backgroundColor = .clear }
+
+        // Check if there are more questions in the current activity
+        if currentQuestionIndex < activity.questions.count - 1 {
+            currentQuestionIndex += 1
+            displayQuestion()
+        } else {
+            // Check if the current activity is one that allows adding more entries
+            if activity.name == "Hobbies" || activity.name == "Self Care" || activity.name == "Social Responsibilities" || activity.name == "School" {
+                showAddAnotherPrompt()
             } else {
-                if let nextActivity = remainingActivities.first {
-                    let nextRemainingActivities = Array(remainingActivities.dropFirst())
-                    navigateToQuestions(for: nextActivity, remainingActivities: nextRemainingActivities)
-                } else {
-                    finishSchedule()
-                }
+                moveToNextActivityOrFinish()
             }
+        }
+    }
+    
+    func moveToNextActivityOrFinish() {
+        if let nextActivity = remainingActivities.first {
+            // There are more activities, navigate to the next one
+            let nextRemainingActivities = Array(remainingActivities.dropFirst())
+            navigateToQuestions(for: nextActivity, remainingActivities: nextRemainingActivities)
+        } else {
+            // No more activities left, finish the questionnaire
+            finishSchedule()
+        }
     }
     
     func navigateToQuestions(for activity: Activity, remainingActivities: [Activity]) {
