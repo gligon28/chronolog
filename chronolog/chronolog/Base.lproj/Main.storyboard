@@ -330,11 +330,37 @@
                         <outlet property="lblQuestion" destination="qxF-l9-QhH" id="9pb-zy-Juc"/>
                         <outlet property="stkMultipleSelectionView" destination="rML-BK-FE7" id="DVN-54-vKe"/>
                         <outlet property="txtAnswer" destination="BQK-NL-LUR" id="vnM-Jt-VBA"/>
+                        <segue destination="WwJ-w0-NK0" kind="show" identifier="goToNext" id="6bk-vb-qIa"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="UmM-3I-QrJ" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="4188.5496183206105" y="561.97183098591552"/>
+        </scene>
+        <!--Home View Controller-->
+        <scene sceneID="HC3-g2-Njf">
+            <objects>
+                <viewController storyboardIdentifier="Home View Controller" id="WwJ-w0-NK0" customClass="HomeViewController" customModule="chronolog" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="Rdl-iO-HGb">
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="HOME" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="GFk-OA-lHy">
+                                <rect key="frame" x="172" y="416" width="49" height="21"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="mQg-eN-AJY"/>
+                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                    </view>
+                    <navigationItem key="navigationItem" id="60m-j3-S6S"/>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="QKw-uj-KLe" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="5030" y="562"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="dpg-BY-1Gl">
