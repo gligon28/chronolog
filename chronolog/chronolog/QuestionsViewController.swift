@@ -139,12 +139,10 @@ class QuestionsViewController: UIViewController {
     func moveToNextActivityOrFinish() {
         saveDataToFirestore()
         if let nextActivity = remainingActivities.first {
-            // There are more activities, navigate to the next one
             let nextRemainingActivities = Array(remainingActivities.dropFirst())
             navigateToQuestions(for: nextActivity, remainingActivities: nextRemainingActivities)
         } else {
-            // No more activities left, finish the questionnaire
-            finishSchedule()
+            performSegue(withIdentifier: "goToNext", sender: self)
         }
     }
     
