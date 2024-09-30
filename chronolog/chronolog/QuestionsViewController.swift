@@ -24,6 +24,7 @@ class QuestionsViewController: UIViewController {
     @IBOutlet weak var lblQuestion: UILabel!
     @IBOutlet weak var txtAnswer: UITextField!
     @IBOutlet weak var stkMultipleSelectionView: UIStackView!
+    @IBOutlet weak var hourMinPicker: UIDatePicker!
     
     var multipleSelectionButtons: [UIButton] = []
 
@@ -37,24 +38,26 @@ class QuestionsViewController: UIViewController {
         lblActivity.text = activity.name
         let currentQuestion = activity.questions[currentQuestionIndex]
         lblQuestion.text = currentQuestion.text
-        
-        // Adjust the keyboard type based on the type of question
-        if currentQuestion.text.contains("How many hours") || currentQuestion.text.contains("How much time") {
-            // Set the keyboard to number pad for hour-based questions
-            txtAnswer.keyboardType = .numberPad
-        } else {
-            // Set the default keyboard for other questions
-            txtAnswer.keyboardType = .default
-        }
             
-        switch currentQuestion.inputType {
-        case .text:
-            txtAnswer.isHidden = false
-            stkMultipleSelectionView.isHidden = true
-        case .multipleSelection(let options):
+        // Determine the input type for the current question
+        if currentQuestion.text.contains("How many hours") || currentQuestion.text.contains("How much time") {
             txtAnswer.isHidden = true
-            stkMultipleSelectionView.isHidden = false
-            setupMultipleSelection(options: options)
+            hourMinPicker.isHidden = false
+            stkMultipleSelectionView.isHidden = true
+            hourMinPicker.datePickerMode = .countDownTimer
+        } else {
+            hourMinPicker.isHidden = true
+                
+            switch currentQuestion.inputType {
+            case .text:
+                txtAnswer.isHidden = false
+                stkMultipleSelectionView.isHidden = true
+                txtAnswer.keyboardType = .default
+            case .multipleSelection(let options):
+                txtAnswer.isHidden = true
+                stkMultipleSelectionView.isHidden = false
+                setupMultipleSelection(options: options)
+            }
         }
     }
 
@@ -103,34 +106,33 @@ class QuestionsViewController: UIViewController {
     @IBAction func btnContinueQuestions(_ sender: UIButton) {
         let currentQuestion = activity.questions[currentQuestionIndex]
 
-        // Store the answer based on input type
-        switch currentQuestion.inputType {
-            case .text:
-                if let answer = txtAnswer.text, !answer.isEmpty {
-                    answers[currentQuestion.text] = answer
-                }
-            case .multipleSelection:
-                let selectedOptions = multipleSelectionButtons.compactMap { $0.tag == 1 ? $0.titleLabel?.text : nil }
-                answers[currentQuestion.text] = selectedOptions
+        if !hourMinPicker.isHidden {
+            let duration = hourMinPicker.countDownDuration
+            let hours = Int(duration / 3600)
+            let minutes = Int((duration / 60).truncatingRemainder(dividingBy: 60))
+            answers[currentQuestion.text] = "\(hours)h \(minutes)m"
+        } else {
+            switch currentQuestion.inputType {
+                case .text:
+                    if let answer = txtAnswer.text, !answer.isEmpty {
+                        answers[currentQuestion.text] = answer
+                    }
+                case .multipleSelection:
+                    let selectedOptions = multipleSelectionButtons.compactMap { $0.tag == 1 ? $0.titleLabel?.text : nil }
+                    answers[currentQuestion.text] = selectedOptions
+            }
         }
 
-        // Clear input for the next question
         txtAnswer.text = ""
+        hourMinPicker.isHidden = true
         multipleSelectionButtons.forEach { $0.tag = 0; $0.backgroundColor = .clear }
-        
         saveDataToFirestore()
 
-        // Check if there are more questions in the current activity
         if currentQuestionIndex < activity.questions.count - 1 {
             currentQuestionIndex += 1
             displayQuestion()
         } else {
-            // Check if the current activity is one that allows adding more entries
-            if activity.name == "Hobbies" || activity.name == "Self Care" || activity.name == "Social Responsibilities" || activity.name == "School" {
-                showAddAnotherPrompt()
-            } else {
-                moveToNextActivityOrFinish()
-            }
+            moveToNextActivityOrFinish()
         }
     }
     
@@ -182,6 +184,13 @@ class QuestionsViewController: UIViewController {
                 print("Data successfully saved to Firestore for activity \(self.activity.name).")
             }
         }
+    }
+    
+    @objc func timePickerChanged(_ sender: UIDatePicker) {
+        let duration = sender.countDownDuration
+        let hours = Int(duration / 3600)
+        let minutes = Int((duration / 60).truncatingRemainder(dividingBy: 60))
+        answers[lblQuestion.text!] = "\(hours)h \(minutes)m"
     }
 
 

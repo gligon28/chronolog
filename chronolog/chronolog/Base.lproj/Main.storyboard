@@ -315,12 +315,17 @@
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
+                            <datePicker contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" datePickerMode="dateAndTime" minuteInterval="1" translatesAutoresizingMaskIntoConstraints="NO" id="zlY-2d-6aG">
+                                <rect key="frame" x="73" y="372" width="247" height="47"/>
+                                <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMaxY="YES"/>
+                            </datePicker>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="zZs-V7-ZjZ"/>
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                     </view>
                     <navigationItem key="navigationItem" id="U1C-vm-JUs"/>
                     <connections>
+                        <outlet property="hourMinPicker" destination="zlY-2d-6aG" id="KGW-Af-APq"/>
                         <outlet property="lblActivity" destination="2YT-sy-vyg" id="RxN-XJ-mK6"/>
                         <outlet property="lblQuestion" destination="qxF-l9-QhH" id="9pb-zy-Juc"/>
                         <outlet property="stkMultipleSelectionView" destination="rML-BK-FE7" id="DVN-54-vKe"/>
