@@ -338,7 +338,7 @@
                             </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="mQg-eN-AJY"/>
-                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <color key="backgroundColor" red="0.94259423324742264" green="0.7426650112201918" blue="0.8577386136903179" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                     </view>
                     <navigationItem key="navigationItem" id="60m-j3-S6S"/>
                 </viewController>
