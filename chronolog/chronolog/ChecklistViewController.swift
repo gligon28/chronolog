@@ -53,6 +53,11 @@ class ChecklistViewController: UITableViewController {
                 Question(text: "Enter social responsibility?", inputType: .text),
                 Question(text: "What days of the week do you do this social responsibility?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
                 Question(text: "How much time do you spend on this social responsibility?", inputType: .text)
+            ]),
+        Activity(name: "Add Activity", isSelected: false, questions: [
+                Question(text: "Enter activity", inputType: .text),
+                Question(text: "What days of the week do you do this activity?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "How much time do you spend on this activity?", inputType: .text)
             ])
     ]
     
