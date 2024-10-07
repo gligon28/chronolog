@@ -45,6 +45,8 @@ class QuestionsViewController: UIViewController {
             hourMinPicker.isHidden = false
             stkMultipleSelectionView.isHidden = true
             hourMinPicker.datePickerMode = .countDownTimer
+            hourMinPicker.countDownDuration = 0  // Set the default to 0 hours and 0 minutes
+
         } else {
             hourMinPicker.isHidden = true
                 

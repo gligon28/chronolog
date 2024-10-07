@@ -1,13 +1,13 @@
 //
-//  HomeViewController.swift
+//  GetToKnowViewController.swift
 //  chronolog
 //
-//  Created by Janie Giron on 9/30/24.
+//  Created by gg ligon on 10/7/24.
 //
 
 import UIKit
 
-class HomeViewController: UIViewController {
+class GetToKnowViewController: UIViewController {
 
     @IBOutlet weak var lblWelcome: UILabel!
     
@@ -19,12 +19,12 @@ class HomeViewController: UIViewController {
         
         // Set the label text using the activeUsername variable
         if let username = activeUser {
-            lblWelcome.text = "Welcome, \(username)"
+            lblWelcome.text = "Let's Get To Know You, \(username)"
         } else {
-            lblWelcome.text = "Welcome"
+            lblWelcome.text = "Let's Get To Know You"
         }
         
         lblWelcome.isHidden = false
     }
-
+    
 }

@@ -42,6 +42,7 @@
 		D1A345562C9F9A58005B1F44 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = D1A345552C9F9A58005B1F44 /* GoogleService-Info.plist */; };
 		D1A3455D2CA0DDDC005B1F44 /* UserActivities.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A3455C2CA0DDDC005B1F44 /* UserActivities.swift */; };
 		D1A345612CA0DF4F005B1F44 /* ChecklistViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A345602CA0DF4F005B1F44 /* ChecklistViewController.swift */; };
+		D1FCDA262CB42C780061EAA9 /* GetToKnowViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1FCDA252CB42C780061EAA9 /* GetToKnowViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,6 +60,7 @@
 		D1A345552C9F9A58005B1F44 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		D1A3455C2CA0DDDC005B1F44 /* UserActivities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserActivities.swift; sourceTree = "<group>"; };
 		D1A345602CA0DF4F005B1F44 /* ChecklistViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistViewController.swift; sourceTree = "<group>"; };
+		D1FCDA252CB42C780061EAA9 /* GetToKnowViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GetToKnowViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -98,6 +100,7 @@
 		D195239C2C9F871900762B0D = {
 			isa = PBXGroup;
 			children = (
+				D1FCDA252CB42C780061EAA9 /* GetToKnowViewController.swift */,
 				D1A3455C2CA0DDDC005B1F44 /* UserActivities.swift */,
 				D19523A72C9F871900762B0D /* chronolog */,
 				D19523A62C9F871900762B0D /* Products */,
@@ -234,6 +237,7 @@
 				D1A345542C9F9864005B1F44 /* CreateAccountViewController.swift in Sources */,
 				5054B33E2CA1110A0020F9C3 /* QuestionsViewController.swift in Sources */,
 				D1A345612CA0DF4F005B1F44 /* ChecklistViewController.swift in Sources */,
+				D1FCDA262CB42C780061EAA9 /* GetToKnowViewController.swift in Sources */,
 				508A253C2CAB4D0F00488B39 /* HomeViewController.swift in Sources */,
 				D19523AD2C9F871900762B0D /* LoginViewController.swift in Sources */,
 				D19523A92C9F871900762B0D /* AppDelegate.swift in Sources */,
