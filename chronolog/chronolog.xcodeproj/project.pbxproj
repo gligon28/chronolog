@@ -31,6 +31,9 @@
 		5054B3452CA11FA00020F9C3 /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 5054B3442CA11FA00020F9C3 /* FirebaseDatabase */; };
 		5054B3472CA11FA00020F9C3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 5054B3462CA11FA00020F9C3 /* FirebaseFirestore */; };
 		5054B3492CA11FA00020F9C3 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 5054B3482CA11FA00020F9C3 /* FirebaseStorage */; };
+		50759B292CBB2BA100B6D89A /* CalendarKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50759B282CBB2BA100B6D89A /* CalendarKit */; };
+		50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */; };
+		50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */; };
 		508A253C2CAB4D0F00488B39 /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508A253B2CAB4D0F00488B39 /* HomeViewController.swift */; };
 		D19523A92C9F871900762B0D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19523A82C9F871900762B0D /* AppDelegate.swift */; };
 		D19523AB2C9F871900762B0D /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19523AA2C9F871900762B0D /* SceneDelegate.swift */; };
@@ -47,6 +50,8 @@
 
 /* Begin PBXFileReference section */
 		5054B33D2CA1110A0020F9C3 /* QuestionsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionsViewController.swift; sourceTree = "<group>"; };
+		50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarViewController.swift; sourceTree = "<group>"; };
+		50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEvent.swift; sourceTree = "<group>"; };
 		508A253B2CAB4D0F00488B39 /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
 		D19523A52C9F871900762B0D /* chronolog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = chronolog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D19523A82C9F871900762B0D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -81,6 +86,7 @@
 				5046F6F82CAB92B800725BFC /* FirebaseCrashlytics in Frameworks */,
 				5046F7082CAB92B800725BFC /* FirebaseMessaging in Frameworks */,
 				5046F7042CAB92B800725BFC /* FirebaseInstallations in Frameworks */,
+				50759B292CBB2BA100B6D89A /* CalendarKit in Frameworks */,
 				5046F7002CAB92B800725BFC /* FirebaseFunctionsCombine-Community in Frameworks */,
 				5046F6F02CAB92B800725BFC /* FirebaseAnalyticsWithoutAdIdSupport in Frameworks */,
 				5054B3492CA11FA00020F9C3 /* FirebaseStorage in Frameworks */,
@@ -130,6 +136,8 @@
 				D19523B62C9F871A00762B0D /* Info.plist */,
 				D1A345552C9F9A58005B1F44 /* GoogleService-Info.plist */,
 				508A253B2CAB4D0F00488B39 /* HomeViewController.swift */,
+				50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */,
+				50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */,
 			);
 			path = chronolog;
 			sourceTree = "<group>";
@@ -174,6 +182,7 @@
 				5046F70B2CAB92B800725BFC /* FirebaseRemoteConfig */,
 				5046F70D2CAB92B800725BFC /* FirebaseStorageCombine-Community */,
 				5046F70F2CAB92B800725BFC /* FirebaseVertexAI-Preview */,
+				50759B282CBB2BA100B6D89A /* CalendarKit */,
 			);
 			productName = chronolog;
 			productReference = D19523A52C9F871900762B0D /* chronolog.app */;
@@ -205,6 +214,7 @@
 			mainGroup = D195239C2C9F871900762B0D;
 			packageReferences = (
 				5054B33F2CA11FA00020F9C3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				50759B272CBB2BA100B6D89A /* XCRemoteSwiftPackageReference "CalendarKit" */,
 			);
 			productRefGroup = D19523A62C9F871900762B0D /* Products */;
 			projectDirPath = "";
@@ -234,6 +244,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */,
+				50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */,
 				D1A345542C9F9864005B1F44 /* CreateAccountViewController.swift in Sources */,
 				5054B33E2CA1110A0020F9C3 /* QuestionsViewController.swift in Sources */,
 				D1A345612CA0DF4F005B1F44 /* ChecklistViewController.swift in Sources */,
@@ -475,6 +487,14 @@
 				minimumVersion = 11.2.0;
 			};
 		};
+		50759B272CBB2BA100B6D89A /* XCRemoteSwiftPackageReference "CalendarKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/richardtop/CalendarKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.10;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -592,6 +612,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5054B33F2CA11FA00020F9C3 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		50759B282CBB2BA100B6D89A /* CalendarKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 50759B272CBB2BA100B6D89A /* XCRemoteSwiftPackageReference "CalendarKit" */;
+			productName = CalendarKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
