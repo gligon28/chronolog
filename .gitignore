@@ -1,0 +1,5 @@
+.DS_Store
+# Xcode specific files to ignore
+*.xcuserstate
+*.xcuserdata/
+*.xcschememanagement.plist
