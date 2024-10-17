@@ -12,6 +12,7 @@ class LoginViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        txtPassword.isSecureTextEntry = true
     }
 
     @IBAction func btnLogin(_ sender: UIButton) {
