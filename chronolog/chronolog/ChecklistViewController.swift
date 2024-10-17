@@ -10,17 +10,55 @@ import UIKit
 class ChecklistViewController: UITableViewController {
 
     var activities: [Activity] = [
-        Activity(name: "Work", isSelected: false),
-        Activity(name: "School", isSelected: false),
-        Activity(name: "Chores", isSelected: false),
-        Activity(name: "Exercise", isSelected: false),
-        Activity(name: "Sleep", isSelected: false),
-        Activity(name: "Social Responsibilities", isSelected: false),
-        Activity(name: "Hobbies", isSelected: false),
-        Activity(name: "Meal Planning", isSelected: false),
-        Activity(name: "Sleep", isSelected: false),
-        Activity(name: "Commute", isSelected: false),
-        Activity(name: "Self-Care", isSelected: false)
+        Activity(name: "Work", isSelected: false, questions: [
+                Question(text: "What days of the week do you work?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "How many hours are your shifts?", inputType: .text)
+            ]),
+        Activity(name: "Exercise", isSelected: false, questions: [
+                Question(text: "What days of the week do you exercise?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "How much time do you spend doing exercise?", inputType: .text)
+            ]),
+        Activity(name: "Sleep", isSelected: false, questions: [
+                Question(text: "How many hours of sleep do you get?", inputType: .text)
+            ]),
+        Activity(name: "Commute", isSelected: false, questions: [
+                Question(text: "How many hours of commuting do you do?", inputType: .text)
+            ]),
+        Activity(name: "Meal Planning", isSelected: false, questions: [
+                Question(text: "What days of the week do you prepare meals?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "How much time do you spend meal prepping", inputType: .text)
+            ]),
+        Activity(name: "Chores", isSelected: false, questions: [
+                Question(text: "What days of the week do you do chores?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "How much time do you spend on chores (each day)?", inputType: .text)
+            ]),
+        Activity(name: "Hobbies", isSelected: false, questions: [
+                Question(text: "What is your hobby?", inputType: .text),
+                Question(text: "What days of the week do you do this hobby?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "How much time do you spend on this hobby each week?", inputType: .text)
+            ]),
+            
+        Activity(name: "Self-Care", isSelected: false, questions: [
+                Question(text: "What self-care activity do you do?", inputType: .text),
+                Question(text: "What days of the week do you do this self-care activity?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "How much time do you spend on this self-care activity?", inputType: .text)
+            ]),
+        Activity(name: "School", isSelected: false, questions: [
+                Question(text: "Add class", inputType: .text),
+                Question(text: "What days of the week is the class?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "What time?", inputType: .text)
+            ]),
+            
+        Activity(name: "Social Responsibilities", isSelected: false, questions: [
+                Question(text: "Enter social responsibility?", inputType: .text),
+                Question(text: "What days of the week do you do this social responsibility?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "How much time do you spend on this social responsibility?", inputType: .text)
+            ]),
+        Activity(name: "Add Activity", isSelected: false, questions: [
+                Question(text: "Enter activity", inputType: .text),
+                Question(text: "What days of the week do you do this activity?", inputType: .multipleSelection(options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])),
+                Question(text: "How much time do you spend on this activity?", inputType: .text)
+            ])
     ]
     
     override func viewDidLoad() {
@@ -29,7 +67,25 @@ class ChecklistViewController: UITableViewController {
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "ActivityCell")
     }
 
-    // MARK: - Table view data source
+    
+    
+    @IBAction func btnContinue(_ sender: UIButton) {
+        let selectedActivities = activities.filter { $0.isSelected }
+            if let firstActivity = selectedActivities.first {
+                navigateToQuestions(for: firstActivity, remainingActivities: Array(selectedActivities.dropFirst()))
+            }
+        
+    }
+    
+    func navigateToQuestions(for activity: Activity, remainingActivities: [Activity]) {
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+            if let questionsVC = storyboard.instantiateViewController(withIdentifier: "QuestionsViewController") as? QuestionsViewController {
+                questionsVC.activity = activity // Pass the selected activity
+                questionsVC.remainingActivities = remainingActivities
+                navigationController?.pushViewController(questionsVC, animated: true)
+        }
+    }
+
 
     override func numberOfSections(in tableView: UITableView) -> Int {
         return 1
