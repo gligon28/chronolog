@@ -11,5 +11,5 @@ struct CustomEvent {
     var title: String
     var date: Date
     var duration: Int
-    var description: String
+    var description: [Any]
 }
