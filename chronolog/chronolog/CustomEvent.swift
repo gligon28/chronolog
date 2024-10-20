@@ -9,7 +9,11 @@ import Foundation
 
 struct CustomEvent {
     var title: String
-    var date: Date
-    var duration: Int
-    var description: [Any]
+    var date: Date?
+    var startTime: Date?
+    var endTime: Date?
+    var duration: Int?
+    var description: String
+    var isRecurring: Bool
+    var daysOfWeek: [String: Bool]?
 }

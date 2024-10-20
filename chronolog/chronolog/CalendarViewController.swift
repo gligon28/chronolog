@@ -11,7 +11,7 @@ import CalendarKit
 import FirebaseFirestore
 import FirebaseAuth
 
-class CalendarViewController: DayViewController {
+class CalendarViewController: DayViewController, UITabBarControllerDelegate {
     
     let db = Firestore.firestore()
     let userID = Auth.auth().currentUser?.uid
@@ -20,6 +20,8 @@ class CalendarViewController: DayViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Calendar"
+        self.tabBarController?.delegate = self
+
         fetchEvents { [weak self] events in
             self?.customEvents = events
             self?.reloadData()
@@ -34,55 +36,73 @@ class CalendarViewController: DayViewController {
             if let error = error {
                 print("Error fetching documents: \(error)")
             } else {
-                print("Query snapshot: \(querySnapshot?.documents ?? [])")
-
                 var events = [CustomEvent]()
                 for document in querySnapshot!.documents {
-                    print("Document data: \(document.data())")
                     let data = document.data()
                     let title = data["title"] as? String ?? "No Title"
-                    // Change from String to Timestamp for date field
-                    if let timestamp = data["date"] as? Timestamp {
-                        let date = timestamp.dateValue() // Convert Firestore Timestamp to Date
-                                        
-                        let duration = data["duration"] as? Int ?? 0
-                        let description = data["description"] as? String ?? ""
-                        let event = CustomEvent(title: title, date: date, duration: duration, description: description)
-                                        events.append(event)
-                    } else {
-                        print("Error: Missing or invalid date field.")
-                    }
+                    let description = data["description"] as? String ?? ""
+                    let isRecurring = data["isRecurring"] as? Bool ?? false
+                    let daysOfWeek = data["daysOfWeek"] as? [String: Bool]
+
+                    let startTime = (data["startTime"] as? Timestamp)?.dateValue()
+                    let endTime = (data["endTime"] as? Timestamp)?.dateValue()
+                    let duration = data["duration"] as? Int
+
+                    let event = CustomEvent(
+                        title: title,
+                        date: (data["date"] as? Timestamp)?.dateValue(),
+                        startTime: startTime,
+                        endTime: endTime,
+                        duration: duration,
+                        description: description,
+                        isRecurring: isRecurring,
+                        daysOfWeek: daysOfWeek
+                    )
+                    events.append(event)
                 }
-                print("Fetched events: \(events)")
                 completion(events)
             }
         }
     }
 
-    // Override this method to provide events for a given date
+
     override func eventsForDate(_ date: Date) -> [EventDescriptor] {
         var eventDescriptors = [EventDescriptor]()
-            
-        // Filter custom events to get those for the given date
-        let calendar = Calendar.current
-        let filteredEvents = customEvents.filter { customEvent in
-            return calendar.isDate(customEvent.date, inSameDayAs: date)
+        
+        let filteredEvents = customEvents.filter { event in
+            if let eventDate = event.date {
+                return Calendar.current.isDate(eventDate, inSameDayAs: date)
+            }
+            return false  // If no specific date, don't show the event
         }
-            
-        // Convert filtered custom events to CalendarKit EventDescriptor
-        for customEvent in filteredEvents {
-            let eventDescriptor = Event() // CalendarKit EventDescriptor
-                
-            eventDescriptor.text = customEvent.title
-            eventDescriptor.dateInterval = DateInterval(start: customEvent.date,
-                                                            end: customEvent.date.addingTimeInterval(TimeInterval(customEvent.duration * 60)))
-            eventDescriptor.userInfo = customEvent.description
-                
+
+        for event in filteredEvents {
+            let eventDescriptor = Event()
+            eventDescriptor.text = "\(event.title)\n\(event.description)"
+            if let startTime = event.startTime, let endTime = event.endTime {
+                eventDescriptor.dateInterval = DateInterval(start: startTime, end: endTime)
+            } else if let date = event.date, let duration = event.duration {
+                // Calculate the end time using the duration if specific start/end times aren't provided
+                eventDescriptor.dateInterval = DateInterval(start: date, end: date.addingTimeInterval(TimeInterval(duration * 60)))
+            }
+            eventDescriptor.userInfo = event.description
             eventDescriptors.append(eventDescriptor)
         }
-            
+        
         return eventDescriptors
     }
+
+    func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
+        if viewController is CalendarViewController {
+            // The calendar tab was tapped, fetch events
+            (viewController as? CalendarViewController)?.fetchEvents { [weak viewController] events in
+                guard let calendarVC = viewController as? CalendarViewController else { return }
+                calendarVC.customEvents = events
+                calendarVC.reloadData()
+            }
+        }
+    }
+
     
     func parseDate(from dateString: String) -> Date? {
         let dateFormatter = ISO8601DateFormatter()
