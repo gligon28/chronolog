@@ -17,17 +17,12 @@ class AddEventViewController: UIViewController {
     }
     
     @IBOutlet weak var recurringDateView: UIView!
-    @IBOutlet weak var singleDateView: UIView!
     @IBOutlet weak var swtRecurringEvent: UISwitch!
     
     @IBOutlet weak var txtTitle: UITextField!
     @IBOutlet weak var txtLocation: UITextField!
     @IBOutlet weak var sgmPriority: UISegmentedControl!
-    
-    @IBOutlet weak var txtDuration: UITextField!
-    @IBOutlet weak var dateDeadline: UIDatePicker!
-    @IBOutlet weak var swtBreak: UISwitch!
-    
+     
     
     @IBOutlet weak var swtSunday: UISwitch!
     @IBOutlet weak var swtSaturday: UISwitch!
@@ -36,8 +31,9 @@ class AddEventViewController: UIViewController {
     @IBOutlet weak var swtWednesday: UISwitch!
     @IBOutlet weak var swtTuesday: UISwitch!
     @IBOutlet weak var swtMonday: UISwitch!
-    @IBOutlet weak var timeEnd: UIDatePicker!
-    @IBOutlet weak var timeStart: UIDatePicker!
+    
+    @IBOutlet weak var endDate: UIDatePicker!
+    @IBOutlet weak var startDate: UIDatePicker!
     
     @IBAction func swtRecurringEvent(_ sender: UISwitch) {
         updateDateOptions()
@@ -45,38 +41,42 @@ class AddEventViewController: UIViewController {
     
     func saveEvent() {
         let title = txtTitle.text ?? ""
-        let duration = Int(txtDuration.text ?? "0") ?? 0
         let description = txtLocation.text ?? ""
         let isRecurring = swtRecurringEvent.isOn
-        let deadline = dateDeadline.date
-        let startTime = timeStart.date
-        let endTime = timeEnd.date
+        let startTime = startDate.date
+        let endTime = endDate.date
+      
 
-        var daysOfWeek: [String: Bool] = [
-            "Sunday": swtSunday.isOn,
-            "Monday": swtMonday.isOn,
-            "Tuesday": swtTuesday.isOn,
-            "Wednesday": swtWednesday.isOn,
-            "Thursday": swtThursday.isOn,
-            "Friday": stwFriday.isOn,
-            "Saturday": swtSaturday.isOn
-        ]
+        var daysOfWeek: [String: Bool]? = nil
+        if isRecurring {
+            daysOfWeek = [
+                "Sunday": swtSunday.isOn,
+                "Monday": swtMonday.isOn,
+                "Tuesday": swtTuesday.isOn,
+                "Wednesday": swtWednesday.isOn,
+                "Thursday": swtThursday.isOn,
+                "Friday": stwFriday.isOn,
+                "Saturday": swtSaturday.isOn
+            ]
+        }
 
         // Create a custom event instance
         let event = CustomEvent(
             title: title,
-            date: deadline,
             startTime: startTime,
             endTime: endTime,
-            duration: duration,
             description: description,
             isRecurring: isRecurring,
             daysOfWeek: daysOfWeek
         )
         
         // Now call a function to save this event
+        print("Saving event with start time: \(String(describing: startTime)) and end time: \(String(describing: endTime))")
+
         saveToFirebase(event: event)
     }
+    
+    //function that gets daysOfTheWeek array and creates an event for every date that falls on a day that is true
 
     func saveToFirebase(event: CustomEvent) {
         guard let userID = Auth.auth().currentUser?.uid else {
@@ -87,11 +87,8 @@ class AddEventViewController: UIViewController {
         let db = Firestore.firestore()
         let eventData = [
             "title": event.title,
-            "date": event.date,
             "startTime": event.startTime,
             "endTime": event.endTime,
-            "duration": event.duration,
-            "description": event.description,
             "isRecurring": event.isRecurring,
             "daysOfWeek": event.daysOfWeek
         ] as [String : Any]
@@ -132,10 +129,8 @@ class AddEventViewController: UIViewController {
     func addNewEvent() {
         txtTitle.text = ""
         txtLocation.text = ""
-        txtDuration.text = ""
         
         swtRecurringEvent.isOn = false
-        swtBreak.isOn = false
         swtSunday.isOn = false
         swtMonday.isOn = false
         swtTuesday.isOn = false
@@ -146,9 +141,8 @@ class AddEventViewController: UIViewController {
 
         // Reset date pickers to current date or a specific default date
         let currentDate = Date()
-        dateDeadline.setDate(currentDate, animated: true)
-        timeStart.setDate(currentDate, animated: true)
-        timeEnd.setDate(currentDate, animated: true)
+        startDate.setDate(currentDate, animated: true)
+        endDate.setDate(currentDate, animated: true)
 
         // Reset segmented controls if any
         sgmPriority.selectedSegmentIndex = 0  // Assuming 0 is the default segment
@@ -159,10 +153,8 @@ class AddEventViewController: UIViewController {
     
     func updateDateOptions() {
         if swtRecurringEvent.isOn {
-            singleDateView.isHidden = true
             recurringDateView.isHidden = false
         } else {
-            singleDateView.isHidden = false
             recurringDateView.isHidden = true
         }
     }
