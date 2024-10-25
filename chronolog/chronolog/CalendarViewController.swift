@@ -43,17 +43,13 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                     let description = data["description"] as? String ?? ""
                     let isRecurring = data["isRecurring"] as? Bool ?? false
                     let daysOfWeek = data["daysOfWeek"] as? [String: Bool]
-
                     let startTime = (data["startTime"] as? Timestamp)?.dateValue()
                     let endTime = (data["endTime"] as? Timestamp)?.dateValue()
-                    let duration = data["duration"] as? Int
 
                     let event = CustomEvent(
                         title: title,
-                        date: (data["date"] as? Timestamp)?.dateValue(),
                         startTime: startTime,
                         endTime: endTime,
-                        duration: duration,
                         description: description,
                         isRecurring: isRecurring,
                         daysOfWeek: daysOfWeek
@@ -68,29 +64,39 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
 
     override func eventsForDate(_ date: Date) -> [EventDescriptor] {
         var eventDescriptors = [EventDescriptor]()
-        
-        let filteredEvents = customEvents.filter { event in
-            if let eventDate = event.date {
-                return Calendar.current.isDate(eventDate, inSameDayAs: date)
+
+        for event in customEvents {
+            // Get the day key directly using a more reliable method
+            let dayKey = Calendar.current.weekdaySymbols[Calendar.current.component(.weekday, from: date) - 1]
+
+            // Check if it's a recurring event and recurs on this day
+            if event.isRecurring, let daysOfWeek = event.daysOfWeek, daysOfWeek[dayKey, default: false] {
+                createEventDescriptor(for: event, appendingTo: &eventDescriptors)
+            } else if !event.isRecurring, let startTime = event.startTime, let endTime = event.endTime, Calendar.current.isDate(startTime, inSameDayAs: date) {
+                // Handle non-recurring event that matches the date
+                createEventDescriptor(for: event, appendingTo: &eventDescriptors)
             }
-            return false  // If no specific date, don't show the event
         }
 
-        for event in filteredEvents {
-            let eventDescriptor = Event()
-            eventDescriptor.text = "\(event.title)\n\(event.description)"
-            if let startTime = event.startTime, let endTime = event.endTime {
-                eventDescriptor.dateInterval = DateInterval(start: startTime, end: endTime)
-            } else if let date = event.date, let duration = event.duration {
-                // Calculate the end time using the duration if specific start/end times aren't provided
-                eventDescriptor.dateInterval = DateInterval(start: date, end: date.addingTimeInterval(TimeInterval(duration * 60)))
-            }
-            eventDescriptor.userInfo = event.description
-            eventDescriptors.append(eventDescriptor)
-        }
-        
         return eventDescriptors
     }
+
+    
+    private func createEventDescriptor(for event: CustomEvent, appendingTo eventDescriptors: inout [EventDescriptor]) {
+        let eventDescriptor = Event()
+        eventDescriptor.text = "\(event.title)\n\(event.description)"
+        if let startTime = event.startTime, let endTime = event.endTime, startTime <= endTime {
+            eventDescriptor.dateInterval = DateInterval(start: startTime, end: endTime)
+        } else {
+            print("Invalid time interval for event: \(event.title)")
+            return
+        }
+        eventDescriptor.userInfo = event.description
+        eventDescriptors.append(eventDescriptor)
+    }
+
+
+
 
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
         if viewController is CalendarViewController {
