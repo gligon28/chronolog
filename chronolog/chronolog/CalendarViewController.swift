@@ -45,11 +45,14 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                     let daysOfWeek = data["daysOfWeek"] as? [String: Bool]
                     let startTime = (data["startTime"] as? Timestamp)?.dateValue()
                     let endTime = (data["endTime"] as? Timestamp)?.dateValue()
+                    print("Fetched event: \(title) from \(String(describing: startTime)) to \(String(describing: endTime))")
 
                     let event = CustomEvent(
                         title: title,
+                        date: nil, // Assuming there is no direct 'date' field; adjust if needed
                         startTime: startTime,
                         endTime: endTime,
+                        duration: nil, // Assuming there is no direct 'duration' field; adjust if needed
                         description: description,
                         isRecurring: isRecurring,
                         daysOfWeek: daysOfWeek
@@ -62,24 +65,36 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
     }
 
 
+
     override func eventsForDate(_ date: Date) -> [EventDescriptor] {
         var eventDescriptors = [EventDescriptor]()
 
-        for event in customEvents {
-            // Get the day key directly using a more reliable method
-            let dayKey = Calendar.current.weekdaySymbols[Calendar.current.component(.weekday, from: date) - 1]
+        let calendar = Calendar.current
+        let dayIndex = calendar.component(.weekday, from: date) - 1  // Calendar's days are 1-based
+        let dayName = calendar.weekdaySymbols[dayIndex]  // Correct day name based on index
 
-            // Check if it's a recurring event and recurs on this day
-            if event.isRecurring, let daysOfWeek = event.daysOfWeek, daysOfWeek[dayKey, default: false] {
-                createEventDescriptor(for: event, appendingTo: &eventDescriptors)
-            } else if !event.isRecurring, let startTime = event.startTime, let endTime = event.endTime, Calendar.current.isDate(startTime, inSameDayAs: date) {
-                // Handle non-recurring event that matches the date
+        print("Date being checked: \(date)")
+        print("Day name from system: \(dayName)")
+
+        for event in customEvents {
+            print("Checking event titled '\(event.title)' for date \(date): Is Recurring: \(event.isRecurring), Days of Week: \(String(describing: event.daysOfWeek))")
+
+            if event.isRecurring {
+                if let daysOfWeek = event.daysOfWeek, daysOfWeek[dayName, default: false] {
+                    print("Adding recurring event: \(event.title)")
+                    createEventDescriptor(for: event, appendingTo: &eventDescriptors)
+                }
+            } else if let startTime = event.startTime, let endTime = event.endTime, calendar.isDate(startTime, inSameDayAs: date) {
+                print("Adding non-recurring event: \(event.title)")
                 createEventDescriptor(for: event, appendingTo: &eventDescriptors)
             }
         }
 
+        print("Total events for \(dayName): \(eventDescriptors.count)")
         return eventDescriptors
     }
+
+
 
     
     private func createEventDescriptor(for event: CustomEvent, appendingTo eventDescriptors: inout [EventDescriptor]) {
