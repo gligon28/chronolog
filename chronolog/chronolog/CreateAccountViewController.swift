@@ -25,7 +25,14 @@ class CreateAccountViewController: UIViewController {
         super.viewDidLoad()
 
         lblError.isHidden = true
+        txtPassword.isSecureTextEntry = true
+        txtConfirmPassword.isSecureTextEntry = true
     }
+    
+    @IBAction func btnSkip(_ sender: UIButton) {
+        self.performSegue(withIdentifier: "goToNext", sender: self)
+    }
+    
     
     @IBAction func btnCreateAccount(_ sender: UIButton) {
         guard let email = txtEmail.text else { return }
