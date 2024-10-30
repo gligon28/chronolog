@@ -32,14 +32,14 @@ class ChecklistViewController: UITableViewController {
         // Filter out selected activities only
         let selectedActivities = activities.filter { $0.isSelected }
         // Pass selected activities to the next view controller
-        navigateToEventSetup(with: selectedActivities)
+        performSegue(withIdentifier: "ShowQuestionsSegue", sender: selectedActivities)
     }
     
-    func navigateToEventSetup(with selectedActivities: [Activity]) {
-        let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        if let questionsVC = storyboard.instantiateViewController(withIdentifier: "QuestionsViewController") as? QuestionsViewController {
-            questionsVC.selectedActivities = selectedActivities // Pass selected activities
-            navigationController?.pushViewController(questionsVC, animated: true)
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "ShowQuestionsSegue",
+           let destinationVC = segue.destination as? QuestionsViewController,
+           let selectedActivities = sender as? [Activity] {
+            destinationVC.selectedActivities = selectedActivities
         }
     }
 
