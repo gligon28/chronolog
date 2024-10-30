@@ -22,6 +22,25 @@ class QuestionsViewController: UIViewController {
         setupSaveButton()
     }
 
+    @IBAction func btnSignOut(_ sender: UIButton) {
+        do {
+            try Auth.auth().signOut()
+            activeUser = nil
+            // Navigate back to login screen
+            self.performSegue(withIdentifier: "goToLogin2", sender: self)
+        } catch let error {
+            print("Error signing out: \(error.localizedDescription)")
+            // Show error alert
+            let alert = UIAlertController(
+                title: "Error",
+                message: "Failed to sign out: \(error.localizedDescription)",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true)
+        }
+    }
+    
     func setupScrollView() {
         // Configure scroll view
         view.addSubview(scrollView)
