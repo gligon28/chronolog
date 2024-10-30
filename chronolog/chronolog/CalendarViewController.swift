@@ -1,17 +1,10 @@
-//
-//  CalendarViewController.swift
-//  chronolog
-//
-//  Created by Grey Ligon on 10/12/24.
-//
-
 import UIKit
 import EventKit
 import CalendarKit
 import FirebaseFirestore
 import FirebaseAuth
 
-class CalendarViewController: DayViewController {
+class CalendarViewController: DayViewController, UITabBarControllerDelegate {
     
     let db = Firestore.firestore()
     let userID = Auth.auth().currentUser?.uid
@@ -20,6 +13,8 @@ class CalendarViewController: DayViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Calendar"
+        self.tabBarController?.delegate = self
+
         fetchEvents { [weak self] events in
             self?.customEvents = events
             self?.reloadData()
@@ -27,105 +22,117 @@ class CalendarViewController: DayViewController {
     }
     
     func fetchEvents(completion: @escaping ([CustomEvent]) -> Void) {
-            guard let userID = userID else {
+        guard let userID = userID else {
+            completion([])
+            return
+        }
+        
+        db.collection("userEvents").document(userID).collection("events").getDocuments { (querySnapshot, error) in
+            if let error = error {
+                print("Error fetching documents: \(error)")
                 completion([])
                 return
             }
             
-            db.collection("userEvents").document(userID).collection("events").getDocuments { [weak self] (querySnapshot, error) in
-                if let error = error {
-                    print("Error fetching documents: \(error)")
-                    completion([])
-                    return
-                }
+            var events = [CustomEvent]()
+            for document in querySnapshot!.documents {
+                let data = document.data()
                 
-                var events = [CustomEvent]()
-                for document in querySnapshot!.documents {
-                    let data = document.data()
-                    
-                    guard let startTimestamp = data["startTime"] as? Timestamp,
-                          let endTimestamp = data["endTime"] as? Timestamp,
-                          let dateTimestamp = data["date"] as? Timestamp else {
-                        continue
-                    }
-                    
-                    let event = CustomEvent(
-                        title: data["title"] as? String ?? "No Title",
-                        date: dateTimestamp.dateValue(),
-                        startTime: startTimestamp.dateValue(),
-                        endTime: endTimestamp.dateValue(),
-                        duration: data["duration"] as? Int ?? 0,
-                        description: [data["description"] as? String ?? ""],
-                        isRecurring: data["isRecurring"] as? Bool ?? false,
-                        daysOfWeek: nil,
-                        isAllDay: data["isAllDay"] as? Bool ?? false
-                    )
-                    
-                    events.append(event)
-                }
+                // Get all possible fields to support both event types
+                let title = data["title"] as? String ?? "No Title"
+                let description = data["description"] as? String ?? ""
+                let isRecurring = data["isRecurring"] as? Bool ?? false
+                let daysOfWeek = data["daysOfWeek"] as? [String: Bool]
+                let startTime = (data["startTime"] as? Timestamp)?.dateValue()
+                let endTime = (data["endTime"] as? Timestamp)?.dateValue()
+                let date = (data["date"] as? Timestamp)?.dateValue() ?? startTime
+                let isAllDay = data["isAllDay"] as? Bool ?? false
+                let duration = data["duration"] as? Int
                 
-                completion(events)
+                print("Fetched event: \(title) from \(String(describing: startTime)) to \(String(describing: endTime))")
+
+                let event = CustomEvent(
+                    title: title,
+                    date: date,
+                    startTime: startTime,
+                    endTime: endTime,
+                    duration: duration,
+                    description: description,
+                    isRecurring: isRecurring,
+                    daysOfWeek: daysOfWeek,
+                    isAllDay: isAllDay
+                )
+                events.append(event)
             }
+            completion(events)
         }
+    }
 
     override func eventsForDate(_ date: Date) -> [EventDescriptor] {
         var eventDescriptors = [EventDescriptor]()
-        
         let calendar = Calendar.current
-        let filteredEvents = customEvents.filter { customEvent in
-            return calendar.isDate(customEvent.date, inSameDayAs: date)
-        }
         
-        // Sort all-day events first
-        let sortedEvents = filteredEvents.sorted { event1, event2 in
-            if event1.isAllDay && !event2.isAllDay {
-                return true
-            } else if !event1.isAllDay && event2.isAllDay {
-                return false
-            }
-            return event1.startTime ?? event1.date < event2.startTime ?? event2.date
-        }
-        
-        for customEvent in sortedEvents {
-            let eventDescriptor = Event()
-            eventDescriptor.text = customEvent.title
-            eventDescriptor.isAllDay = customEvent.isAllDay
-            
-            if customEvent.isAllDay {
-                // For all-day events, set the time to span the full day
-                let midnight = calendar.startOfDay(for: customEvent.date)
-                let nextMidnight = calendar.date(byAdding: .day, value: 1, to: midnight)!
-                eventDescriptor.dateInterval = DateInterval(start: midnight, end: nextMidnight)
+        for event in customEvents {
+            if event.isRecurring {
+                // Handle recurring events
+                let dayIndex = calendar.component(.weekday, from: date) - 1
+                let dayName = calendar.weekdaySymbols[dayIndex]
+                
+                if let daysOfWeek = event.daysOfWeek, daysOfWeek[dayName, default: false] {
+                    createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
+                }
             } else {
-                // For regular events, use the specific times
-                if let startTime = customEvent.startTime,
-                   let endTime = customEvent.endTime {
-                    eventDescriptor.dateInterval = DateInterval(start: startTime, end: endTime)
-                } else {
-                    eventDescriptor.dateInterval = DateInterval(
-                        start: customEvent.date,
-                        end: customEvent.date.addingTimeInterval(TimeInterval(customEvent.duration))
-                    )
+                // Handle non-recurring events
+                if let eventDate = event.startTime ?? event.date,
+                   calendar.isDate(eventDate, inSameDayAs: date) {
+                    createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
                 }
             }
-            
-            // Style the event
-            if customEvent.isAllDay {
-                eventDescriptor.backgroundColor = .systemPurple
-                eventDescriptor.textColor = .white
-            } else {
-                eventDescriptor.backgroundColor = .systemBlue
-                eventDescriptor.textColor = .white
-            }
-            
-            if let firstDescription = customEvent.description.first, !firstDescription.isEmpty {
-                eventDescriptor.text = "\(customEvent.title)\n\(firstDescription)"
-            }
-            
-            eventDescriptors.append(eventDescriptor)
         }
         
-        return eventDescriptors
+        // Sort events (all-day events first)
+        return eventDescriptors.sorted { event1, event2 in
+            if event1.isAllDay && !event2.isAllDay { return true }
+            if !event1.isAllDay && event2.isAllDay { return false }
+            return event1.dateInterval.start < event2.dateInterval.start
+        }
+    }
+    
+    private func createEventDescriptor(for event: CustomEvent, on date: Date, appendingTo eventDescriptors: inout [EventDescriptor]) {
+        let eventDescriptor = Event()
+        eventDescriptor.text = event.description.isEmpty ? event.title : "\(event.title)\n\(event.description)"
+        eventDescriptor.isAllDay = event.isAllDay
+        
+        let calendar = Calendar.current
+        
+        if event.isAllDay {
+            // For all-day events
+            let midnight = calendar.startOfDay(for: date)
+            let nextMidnight = calendar.date(byAdding: .day, value: 1, to: midnight)!
+            eventDescriptor.dateInterval = DateInterval(start: midnight, end: nextMidnight)
+            eventDescriptor.backgroundColor = .systemPurple
+        } else {
+            // For timed events
+            if let startTime = event.startTime ?? event.date,
+               let endTime = event.endTime ?? calendar.date(byAdding: .minute, value: event.duration ?? 60, to: startTime) {
+                eventDescriptor.dateInterval = DateInterval(start: startTime, end: endTime)
+            } else {
+                return
+            }
+            eventDescriptor.backgroundColor = .systemBlue
+        }
+        
+        eventDescriptor.textColor = .white
+        eventDescriptors.append(eventDescriptor)
+    }
+    
+    func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
+        if viewController is CalendarViewController {
+            fetchEvents { [weak self] events in
+                self?.customEvents = events
+                self?.reloadData()
+            }
+        }
     }
     
     func formatEventDuration(_ duration: TimeInterval) -> String {
