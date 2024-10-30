@@ -44,4 +44,29 @@ class LoginViewController: UIViewController {
                     }
                 }
             }
+    
+    func clearFirebaseCache() {
+        // Sign out the user to clear any session-related data
+        do {
+            try Auth.auth().signOut()
+        } catch let signOutError as NSError {
+            print("Error signing out: %@", signOutError)
         }
+        
+        // Get the Firestore instance and configure temporary settings
+        let db = Firestore.firestore()
+        
+        // Temporarily disable persistence
+        let settings = FirestoreSettings()
+        settings.isPersistenceEnabled = false // Temporarily disable persistence
+        db.settings = settings
+        
+        // Re-enable persistence after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            let newSettings = FirestoreSettings()
+            newSettings.isPersistenceEnabled = true // Enable persistence again
+            db.settings = newSettings
+        }
+    }
+    
+}
