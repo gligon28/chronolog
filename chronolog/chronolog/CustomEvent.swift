@@ -9,7 +9,7 @@ import Foundation
 
 struct CustomEvent {
     var title: String
-    var date: Date
+    var date: Date?
     var startTime: Date?
     var endTime: Date?
     var duration: Int

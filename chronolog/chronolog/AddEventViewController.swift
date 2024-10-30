@@ -101,7 +101,17 @@ class AddEventViewController: UIViewController {
                             if nextDate <= originalEndTime {
                                 let adjustedStartDate = nextDate.setTimeTo(time: originalStartTime)
                                 let adjustedEndDate = nextDate.setTimeTo(time: originalEndTime)
-                                let event = CustomEvent(title: title, startTime: adjustedStartDate, endTime: adjustedEndDate, description: description, isRecurring: isRecurring, daysOfWeek: activeDaysOfWeek)
+                                let event = CustomEvent(
+                                    title: title,
+                                    date: adjustedStartDate,  // Use startDate as the date
+                                    startTime: adjustedStartDate,
+                                    endTime: adjustedEndDate,
+                                    duration: 0,  // Default duration
+                                    description: [description],  // Wrap in array since your struct expects [String]
+                                    isRecurring: isRecurring,
+                                    daysOfWeek: activeDaysOfWeek,
+                                    isAllDay: false  // Default to false
+                                )
                                 events.append(event)
                             }
                         }
@@ -111,7 +121,17 @@ class AddEventViewController: UIViewController {
                 currentDate = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: currentDate)!
             }
         } else {
-            let event = CustomEvent(title: title, startTime: originalStartTime, endTime: originalEndTime, description: description, isRecurring: isRecurring, daysOfWeek: activeDaysOfWeek)
+            let event = CustomEvent(
+                title: title,
+                date: originalStartTime,  // Use startTime as the date
+                startTime: originalStartTime,
+                endTime: originalEndTime,
+                duration: 0,  // Default duration
+                description: [description],  // Wrap in array
+                isRecurring: isRecurring,
+                daysOfWeek: activeDaysOfWeek,
+                isAllDay: false  // Default to false
+            )
             events.append(event)
         }
         
@@ -152,14 +172,18 @@ class AddEventViewController: UIViewController {
         
         let db = Firestore.firestore()
         
-        // Prepare the event data for saving
-        let eventData = [
+        // Prepare the event data for saving with all fields from the struct
+        let eventData: [String: Any] = [
             "title": event.title,
-            "startTime": event.startTime,
-            "endTime": event.endTime,
+            "date": event.date as Any,
+            "startTime": event.startTime as Any,
+            "endTime": event.endTime as Any,
+            "duration": event.duration as Any,  // Will be saved as 0
+            "description": event.description.first ?? "",  // Save first description string
             "isRecurring": event.isRecurring,
-            "daysOfWeek": event.daysOfWeek
-        ] as [String: Any]
+            "daysOfWeek": event.daysOfWeek as Any,
+            "isAllDay": false  // Default to false
+        ]
         
         // Save the document to a user-specific collection
         db.collection("userEvents").document(userID).collection("events").addDocument(data: eventData) { error in

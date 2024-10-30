@@ -38,35 +38,41 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             for document in querySnapshot!.documents {
                 let data = document.data()
                 
-                // Get all possible fields to support both event types
+                // Extract and unwrap all values
                 let title = data["title"] as? String ?? "No Title"
-                let description = data["description"] as? String ?? ""
+                let startTimestamp = data["startTime"] as? Timestamp
+                let endTimestamp = data["endTime"] as? Timestamp
+                let dateTimestamp = data["date"] as? Timestamp
+                let duration = data["duration"] as? Int ?? 0  // Provide default value
                 let isRecurring = data["isRecurring"] as? Bool ?? false
                 let daysOfWeek = data["daysOfWeek"] as? [String: Bool]
-                let startTime = (data["startTime"] as? Timestamp)?.dateValue()
-                let endTime = (data["endTime"] as? Timestamp)?.dateValue()
-                let date = (data["date"] as? Timestamp)?.dateValue() ?? startTime
                 let isAllDay = data["isAllDay"] as? Bool ?? false
-                let duration = data["duration"] as? Int
                 
-                print("Fetched event: \(title) from \(String(describing: startTime)) to \(String(describing: endTime))")
-
+                let startTime = startTimestamp?.dateValue()
+                let endTime = endTimestamp?.dateValue()
+                let date = dateTimestamp?.dateValue()
+                let description = data["description"] as? String ?? ""
+                
                 let event = CustomEvent(
                     title: title,
-                    date: date,
+                    date: date ?? startTime ?? Date(),  // Provide a default value
                     startTime: startTime,
                     endTime: endTime,
-                    duration: duration,
-                    description: description,
+                    duration: duration,  // Already has default value
+                    description: [description],  // Wrap in array
                     isRecurring: isRecurring,
                     daysOfWeek: daysOfWeek,
                     isAllDay: isAllDay
                 )
                 events.append(event)
+                
+                print("Fetched event: \(title) from \(String(describing: startTime)) to \(String(describing: endTime))")
             }
             completion(events)
         }
     }
+
+
 
     override func eventsForDate(_ date: Date) -> [EventDescriptor] {
         var eventDescriptors = [EventDescriptor]()
@@ -74,51 +80,59 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         
         for event in customEvents {
             if event.isRecurring {
-                // Handle recurring events
                 let dayIndex = calendar.component(.weekday, from: date) - 1
                 let dayName = calendar.weekdaySymbols[dayIndex]
                 
-                if let daysOfWeek = event.daysOfWeek, daysOfWeek[dayName, default: false] {
+                if let daysOfWeek = event.daysOfWeek,
+                   daysOfWeek[dayName, default: false] {
                     createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
                 }
             } else {
-                // Handle non-recurring events
-                if let eventDate = event.startTime ?? event.date,
-                   calendar.isDate(eventDate, inSameDayAs: date) {
-                    createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
+                // Handle both startTime and date fields
+                if let eventStartTime = event.startTime {
+                    if calendar.isDate(eventStartTime, inSameDayAs: date) {
+                        createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
+                    }
+                } else if let eventDate = event.date {  // Changed to proper optional binding
+                    if calendar.isDate(eventDate, inSameDayAs: date) {
+                        createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
+                    }
                 }
             }
         }
         
-        // Sort events (all-day events first)
         return eventDescriptors.sorted { event1, event2 in
             if event1.isAllDay && !event2.isAllDay { return true }
             if !event1.isAllDay && event2.isAllDay { return false }
             return event1.dateInterval.start < event2.dateInterval.start
         }
     }
+
     
     private func createEventDescriptor(for event: CustomEvent, on date: Date, appendingTo eventDescriptors: inout [EventDescriptor]) {
         let eventDescriptor = Event()
-        eventDescriptor.text = event.description.isEmpty ? event.title : "\(event.title)\n\(event.description)"
+        let descriptionText = event.description.first ?? ""
+        eventDescriptor.text = event.title + (descriptionText.isEmpty ? "" : "\n\(descriptionText)")
         eventDescriptor.isAllDay = event.isAllDay
         
-        let calendar = Calendar.current
-        
         if event.isAllDay {
-            // For all-day events
-            let midnight = calendar.startOfDay(for: date)
-            let nextMidnight = calendar.date(byAdding: .day, value: 1, to: midnight)!
+            let midnight = Calendar.current.startOfDay(for: date)
+            guard let nextMidnight = Calendar.current.date(byAdding: .day, value: 1, to: midnight) else { return }
             eventDescriptor.dateInterval = DateInterval(start: midnight, end: nextMidnight)
             eventDescriptor.backgroundColor = .systemPurple
         } else {
-            // For timed events
-            if let startTime = event.startTime ?? event.date,
-               let endTime = event.endTime ?? calendar.date(byAdding: .minute, value: event.duration ?? 60, to: startTime) {
-                eventDescriptor.dateInterval = DateInterval(start: startTime, end: endTime)
+            // Handle timed events
+            guard let startTime = event.startTime ?? event.date else { return }
+            let endTime: Date
+            
+            if let explicitEndTime = event.endTime {
+                endTime = explicitEndTime
             } else {
-                return
+                let durationSeconds = Double(event.duration ?? 3600)  // Default to 1 hour if nil
+                endTime = startTime.addingTimeInterval(durationSeconds)
             }
+            
+            eventDescriptor.dateInterval = DateInterval(start: startTime, end: endTime)
             eventDescriptor.backgroundColor = .systemBlue
         }
         
