@@ -45,10 +45,11 @@ class QuestionsViewController: UIViewController {
         // Configure scroll view
         view.addSubview(scrollView)
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor).isActive = true
+        scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: +15).isActive = true
         scrollView.bottomAnchor.constraint(equalTo: saveButton.topAnchor, constant: -10).isActive = true
         scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor).isActive = true
         scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
+
 
         // Add stack view to scroll view
         scrollView.addSubview(stackView)
@@ -113,9 +114,13 @@ class QuestionsViewController: UIViewController {
         container.addArrangedSubview(nameTextField)
         
         addLocationField(to: container)
+        addPrioritySegmentedControl(to: container)
         addAllDaySwitch(to: container)
         addDatePickers(to: container)
         addDurationToggle(to: container)
+        addRecurrenceSelector(to: container)
+        addAllowSplittingSwitch(to: container)
+        addAllowOverlapSwitch(to: container)
         addNoteTextField(placeholder: "", to: container)
         
         // Configure elements based on activity type
@@ -141,6 +146,27 @@ class QuestionsViewController: UIViewController {
 //        }
 
         return container
+    }
+    
+    func addPrioritySegmentedControl(to container: UIStackView) {
+        // Create a horizontal stack for label and segmented control
+        let priorityContainer = UIStackView()
+        priorityContainer.axis = .horizontal
+        priorityContainer.spacing = 10
+        
+        // Priority label
+        let priorityLabel = UILabel()
+        priorityLabel.text = "Priority"
+        priorityLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        priorityContainer.addArrangedSubview(priorityLabel)
+        
+        // Segmented control with three segments: High, Medium, Low
+        let prioritySegmentedControl = UISegmentedControl(items: ["High", "Medium", "Low"])
+        prioritySegmentedControl.selectedSegmentIndex = 1 // Default to Medium
+        priorityContainer.addArrangedSubview(prioritySegmentedControl)
+        
+        // Add the priority container to the main container stack
+        container.addArrangedSubview(priorityContainer)
     }
     
     // Helper methods to add common UI elements
@@ -241,6 +267,38 @@ class QuestionsViewController: UIViewController {
         durationPickers[container] = picker
     }
     
+    func addRecurrenceSelector(to container: UIStackView) {
+        let recurrenceContainer = UIStackView()
+        recurrenceContainer.axis = .horizontal
+        recurrenceContainer.spacing = 10
+        
+        // Label for "Repeats"
+        let recurrenceLabel = UILabel()
+        recurrenceLabel.text = "Repeats"
+        recurrenceLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        recurrenceContainer.addArrangedSubview(recurrenceLabel)
+        
+        // Button for selecting recurrence with arrow icon
+        let recurrenceButton = UIButton(type: .system)
+        recurrenceButton.setTitle("Never", for: .normal) // Default text
+        recurrenceButton.tintColor = UIColor.darkGray // Set text and icon color to dark gray
+        recurrenceButton.titleLabel?.font = UIFont.systemFont(ofSize: 16, weight: .medium) // Match label font size
+        
+        // Set up button configuration with icon
+        var config = UIButton.Configuration.plain()
+        config.image = UIImage(systemName: "chevron.down") // Down arrow icon
+        config.imagePlacement = .trailing
+        config.imagePadding = 2 // Adjust spacing between text and icon
+        recurrenceButton.configuration = config
+        
+        recurrenceButton.addTarget(self, action: #selector(showRecurrenceOptions(_:)), for: .touchUpInside)
+        recurrenceContainer.addArrangedSubview(recurrenceButton)
+        container.addArrangedSubview(recurrenceContainer)
+    }
+
+
+
+    
     func addNoteTextField(placeholder: String, to container: UIStackView) {
         let noteContainer = UIStackView()
         noteContainer.axis = .vertical
@@ -272,6 +330,49 @@ class QuestionsViewController: UIViewController {
 //        container.addArrangedSubview(locationLabel)
         container.addArrangedSubview(locationTextField)
     }
+    
+    func addAllowSplittingSwitch(to container: UIStackView) {
+        // Create a horizontal stack for the label and switch
+        let splittingSwitchContainer = UIStackView()
+        splittingSwitchContainer.axis = .horizontal
+        splittingSwitchContainer.spacing = 10
+        
+        // Label for "Allow Splitting"
+        let splittingLabel = UILabel()
+        splittingLabel.text = "Allow Splitting"
+        splittingLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        splittingSwitchContainer.addArrangedSubview(splittingLabel)
+        
+        // Switch for "Allow Splitting"
+        let splittingSwitch = UISwitch()
+        splittingSwitch.isOn = false // Default to "No" (false)
+        splittingSwitchContainer.addArrangedSubview(splittingSwitch)
+        
+        // Add the container with the label and switch to the main container
+        container.addArrangedSubview(splittingSwitchContainer)
+    }
+
+    func addAllowOverlapSwitch(to container: UIStackView) {
+        // Create a horizontal stack for the label and switch
+        let overlapSwitchContainer = UIStackView()
+        overlapSwitchContainer.axis = .horizontal
+        overlapSwitchContainer.spacing = 10
+        
+        // Label for "Allow Overlap"
+        let overlapLabel = UILabel()
+        overlapLabel.text = "Allow Overlap"
+        overlapLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        overlapSwitchContainer.addArrangedSubview(overlapLabel)
+        
+        // Switch for "Allow Overlap"
+        let overlapSwitch = UISwitch()
+        overlapSwitch.isOn = false // Default to "No" (false)
+        overlapSwitchContainer.addArrangedSubview(overlapSwitch)
+        
+        // Add the container with the label and switch to the main container
+        container.addArrangedSubview(overlapSwitchContainer)
+    }
+
     
     func setupSaveButton() {
         // Configure save button
@@ -358,29 +459,64 @@ class QuestionsViewController: UIViewController {
     }
 
     @objc func durationPickerChanged(_ sender: UIDatePicker) {
-        // Adjust the end date when the duration changes
-        guard let container = sender.superview as? UIStackView else { return }
-        adjustEndDateIfNeeded(for: container)
+        print("Duration picker changed: \(sender.countDownDuration / 60) minutes")
+        
+        guard let container = durationPickers.first(where: { $1 == sender })?.key else {
+            print("Container not found for duration picker")
+            return
+        }
+
+        // Retrieve specific date pickers using their associated labels
+        guard let startDatePicker = findDatePicker(in: container, withLabel: "Starts"),
+              let endDatePicker = findDatePicker(in: container, withLabel: "Ends") else {
+            print("Start date picker or end date picker is nil")
+            return
+        }
+
+        // Adjust end date based on selected duration
+        let selectedDuration = sender.countDownDuration
+        let newEndDate = startDatePicker.date.addingTimeInterval(selectedDuration)
+        print("Setting new end date: \(newEndDate)")
+
+        // Update the end date picker
+        endDatePicker.setDate(newEndDate, animated: true)
     }
 
+
+
+    
     func adjustEndDateIfNeeded(for container: UIStackView) {
-        // Retrieve start and end date pickers
         let startDatePicker = container.arrangedSubviews
-            .compactMap { ($0 as? UIStackView)?.arrangedSubviews.last as? UIDatePicker }.first
+            .compactMap { ($0 as? UIStackView)?.arrangedSubviews.first as? UIDatePicker }
+            .first
         let endDatePicker = container.arrangedSubviews
-            .compactMap { ($0 as? UIStackView)?.arrangedSubviews.last as? UIDatePicker }.last
+            .compactMap { ($0 as? UIStackView)?.arrangedSubviews.last as? UIDatePicker }
+            .first
         let durationPicker = durationPickers[container]
 
-        guard let startDatePicker = startDatePicker, let endDatePicker = endDatePicker, let durationPicker = durationPicker else { return }
-
-        // Calculate the target end date based on start date and duration
-        let requiredEndDate = startDatePicker.date.addingTimeInterval(durationPicker.countDownDuration)
-        
-        // Adjust the end date if it is earlier than the required end date
-        if endDatePicker.date < requiredEndDate {
-            endDatePicker.setDate(requiredEndDate, animated: true)
+        // Log debug information
+        if let startDatePicker = startDatePicker, let durationPicker = durationPicker {
+            print("Start date: \(startDatePicker.date)")
+            print("Duration selected: \(durationPicker.countDownDuration / 60) minutes")
+        } else {
+            print("Start date picker or duration picker is nil")
         }
+
+        guard let startDatePicker = startDatePicker, let endDatePicker = endDatePicker, let durationPicker = durationPicker else {
+            print("Missing one of the necessary pickers")
+            return
+        }
+
+        let selectedDuration = durationPicker.countDownDuration
+        let newEndDate = startDatePicker.date.addingTimeInterval(selectedDuration)
+
+        print("New end date: \(newEndDate)")
+
+        // Update the end date picker's value
+        endDatePicker.setDate(newEndDate, animated: true)
     }
+
+
     
     // Update the duration switch toggle to ensure proper validation
     @objc func durationSwitchToggled(_ sender: UISwitch) {
@@ -388,19 +524,21 @@ class QuestionsViewController: UIViewController {
               let picker = durationPickers[container] else { return }
         
         picker.isHidden = !sender.isOn
-        
+
         if sender.isOn {
             stackView.layoutIfNeeded()
-            
+
             // When turning on duration, immediately validate and adjust end date if needed
-            if let startDate = findDatePicker(in: container, withLabel: "Starts")?.date,
+            if let startDatePicker = findDatePicker(in: container, withLabel: "Starts"),
                let endDatePicker = findDatePicker(in: container, withLabel: "Ends") {
-                
-                let requiredEndDate = startDate.addingTimeInterval(picker.countDownDuration)
-                if endDatePicker.date < requiredEndDate {
-                    endDatePicker.setDate(requiredEndDate, animated: true)
-                }
-                endDatePicker.minimumDate = requiredEndDate
+
+                // Adjust end date immediately to reflect the default duration
+                let requiredEndDate = startDatePicker.date.addingTimeInterval(picker.countDownDuration)
+                endDatePicker.setDate(requiredEndDate, animated: true)
+                endDatePicker.minimumDate = startDatePicker.date // Prevent earlier end dates
+
+                // Debugging output
+                print("Duration enabled: Adjusted end date to \(requiredEndDate)")
             }
             
             // Scroll to show the duration picker if needed
@@ -413,6 +551,35 @@ class QuestionsViewController: UIViewController {
             }
         }
     }
+
+    
+    @objc func showRecurrenceOptions(_ sender: UIButton) {
+        let alertController = UIAlertController(title: "Repeat", message: nil, preferredStyle: .actionSheet)
+        
+        let recurrenceOptions = [
+            "Never", "Every Day", "Every Week", "Every 2 Weeks", "Every Month", "Every Year"
+        ]
+        
+        for option in recurrenceOptions {
+            let action = UIAlertAction(title: option, style: .default) { _ in
+                sender.setTitle(option, for: .normal) // Update button title based on selection
+                // Save selected recurrence option if needed
+            }
+            alertController.addAction(action)
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        alertController.addAction(cancelAction)
+        
+        // Present the action sheet
+        if let popoverController = alertController.popoverPresentationController {
+            popoverController.sourceView = sender
+            popoverController.sourceRect = sender.bounds
+        }
+        present(alertController, animated: true, completion: nil)
+    }
+
+
 
     @objc func toggleSection(_ sender: UIButton) {
         guard let index = stackView.arrangedSubviews.firstIndex(of: sender),
@@ -508,14 +675,17 @@ class QuestionsViewController: UIViewController {
                     let duration = durationPicker.countDownDuration
                     let timeDifference = endDate.timeIntervalSince(startDate)
                     
-                    // Add some logging to debug
-                    print("Duration set: \(duration) seconds")
-                    print("Time difference: \(timeDifference) seconds")
-                    
-                    if timeDifference < duration {
+                    // Add tolerance to the duration validation
+                    let tolerance: TimeInterval = 1.0 // Allow 1-second lenience
+                    if timeDifference + tolerance < duration {
                         showAlert(title: "Invalid Duration", message: "The time difference between the start and end dates cannot be less than the specified duration.")
                         return false
                     }
+                    
+                    // Debugging output for validation
+                    print("Duration set: \(duration) seconds")
+                    print("Time difference: \(timeDifference) seconds")
+                    print("Tolerance applied: \(tolerance) seconds")
                 }
             }
         }
@@ -523,17 +693,20 @@ class QuestionsViewController: UIViewController {
     }
     
     // Helper method to find a date picker in a container with a specific label
-    private func findDatePicker(in container: UIStackView, withLabel labelText: String) -> UIDatePicker? {
-        return container.arrangedSubviews
-            .compactMap { $0 as? UIStackView }
-            .first { stack in
-                stack.arrangedSubviews.contains { view in
-                    (view as? UILabel)?.text == labelText
+    func findDatePicker(in container: UIStackView, withLabel labelText: String) -> UIDatePicker? {
+        for subview in container.arrangedSubviews {
+            if let stackView = subview as? UIStackView {
+                let label = stackView.arrangedSubviews.first(where: { ($0 as? UILabel)?.text == labelText })
+                let picker = stackView.arrangedSubviews.first(where: { $0 is UIDatePicker }) as? UIDatePicker
+                if label != nil, picker != nil {
+                    return picker
                 }
-            }?.arrangedSubviews
-            .compactMap { $0 as? UIDatePicker }
-            .first
+            }
+        }
+        return nil
     }
+
+
     
     
     func saveEventsToFirebase() {
@@ -548,93 +721,79 @@ class QuestionsViewController: UIViewController {
         for (index, view) in stackView.arrangedSubviews.enumerated() where index % 2 == 1 {
             guard let container = view as? UIStackView else { continue }
             
-            // Find all the relevant fields
+            // Gather all the relevant fields from UI components
             let titleField = container.arrangedSubviews.first(where: { $0 is UITextField }) as? UITextField
             let startDatePicker = container.arrangedSubviews.compactMap { ($0 as? UIStackView)?.arrangedSubviews.last as? UIDatePicker }.first
             let endDatePicker = container.arrangedSubviews.compactMap { ($0 as? UIStackView)?.arrangedSubviews.last as? UIDatePicker }.last
-            
-            // Find the all-day switch
             let allDaySwitch = container.arrangedSubviews
                 .compactMap { $0 as? UIStackView }
-                .first { stack in
-                    stack.arrangedSubviews.contains { view in
-                        (view as? UILabel)?.text == "All-day"
-                    }
-                }?.arrangedSubviews
-                .compactMap { $0 as? UISwitch }
-                .first
-            
-            // Find the note text field
+                .first { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "All-day" } }?
+                .arrangedSubviews.compactMap { $0 as? UISwitch }.first
             let noteTextField = container.arrangedSubviews
                 .compactMap { $0 as? UIStackView }
-                .first { stack in
-                    stack.arrangedSubviews.contains { view in
-                        (view as? UILabel)?.text == "Add a Note"
-                    }
-                }?.arrangedSubviews
-                .compactMap { $0 as? UITextField }
-                .first
-            
+                .first { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add a Note" } }?
+                .arrangedSubviews.compactMap { $0 as? UITextField }.first
             let durationPicker = durationPickers[container]
-            
+            let allowSplitSwitch = container.arrangedSubviews
+                .compactMap { $0 as? UIStackView }
+                .first { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Allow Splitting" } }?
+                .arrangedSubviews.compactMap { $0 as? UISwitch }.first
+            let allowOverlapSwitch = container.arrangedSubviews
+                .compactMap { $0 as? UIStackView }
+                .first { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Allow Overlap" } }?
+                .arrangedSubviews.compactMap { $0 as? UISwitch }.first
+            let priorityControl = container.arrangedSubviews
+                .compactMap { $0 as? UIStackView }
+                .first { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Priority" } }?
+                .arrangedSubviews.compactMap { $0 as? UISegmentedControl }.first
+
             if let title = titleField?.text,
                let startDate = startDatePicker?.date,
                let endDate = endDatePicker?.date {
                 
                 let isAllDay = allDaySwitch?.isOn ?? false
-                
-                // Convert dates to the user's timezone
-                let calendar = Calendar.current
-                let timeZone = TimeZone.current
-                
-                // If it's an all-day event, adjust the dates to span the full day
-                let adjustedStartDate: Date
-                let adjustedEndDate: Date
-                
-                if isAllDay {
-                    // For all-day events, set start to midnight and end to 23:59:59
-                    var startComponents = calendar.dateComponents([.year, .month, .day], from: startDate)
-                    startComponents.hour = 0
-                    startComponents.minute = 0
-                    startComponents.second = 0
-                    
-                    var endComponents = calendar.dateComponents([.year, .month, .day], from: endDate)
-                    endComponents.hour = 23
-                    endComponents.minute = 59
-                    endComponents.second = 59
-                    
-                    adjustedStartDate = calendar.date(from: startComponents) ?? startDate
-                    adjustedEndDate = calendar.date(from: endComponents) ?? endDate
-                } else {
-                    // For regular events, just adjust for timezone
-                    let startComponents = calendar.dateComponents(in: timeZone, from: startDate)
-                    let endComponents = calendar.dateComponents(in: timeZone, from: endDate)
-                    
-                    adjustedStartDate = calendar.date(from: startComponents) ?? startDate
-                    adjustedEndDate = calendar.date(from: endComponents) ?? endDate
-                }
-                
-                let duration = durationPicker?.countDownDuration ?? 0
+                let allowSplit = allowSplitSwitch?.isOn ?? false
+                let allowOverlap = allowOverlapSwitch?.isOn ?? false
+                let priority: CustomEvent.Priority = {
+                    switch priorityControl?.selectedSegmentIndex {
+                    case 0: return .high
+                    case 1: return .medium
+                    case 2: return .low
+                    default: return .medium
+                    }
+                }()
+                let duration = Int(durationPicker?.countDownDuration ?? 0)
                 let description = noteTextField?.text ?? ""
-                
-                // Log the dates for verification
-                print("Original Start Date:", dateFormatter.string(from: startDate))
-                print("Adjusted Start Date:", dateFormatter.string(from: adjustedStartDate))
-                print("Original End Date:", dateFormatter.string(from: endDate))
-                print("Adjusted End Date:", dateFormatter.string(from: adjustedEndDate))
-                print("Is All Day:", isAllDay)
-                
-                // Prepare data for Firebase using Timestamps
+
+                // Create CustomEvent instance
+                let customEvent = CustomEvent(
+                    title: title,
+                    date: startDate,
+                    startTime: startDate,
+                    endTime: endDate,
+                    duration: duration,
+                    description: [description],
+                    isRecurring: false,
+                    daysOfWeek: nil,
+                    isAllDay: isAllDay,
+                    allowSplit: allowSplit,
+                    allowOverlap: allowOverlap,
+                    priority: priority
+                )
+
+                // Prepare data for Firebase using the CustomEvent instance
                 let eventData: [String: Any] = [
-                    "title": title,
-                    "date": Timestamp(date: adjustedStartDate),
-                    "startTime": Timestamp(date: adjustedStartDate),
-                    "endTime": Timestamp(date: adjustedEndDate),
-                    "duration": Int(duration),
-                    "description": description,
-                    "isRecurring": false,
-                    "isAllDay": isAllDay,
-                    "daysOfWeek": NSNull()
+                    "title": customEvent.title,
+                    "date": Timestamp(date: customEvent.date ?? Date()),
+                    "startTime": Timestamp(date: customEvent.startTime ?? Date()),
+                    "endTime": Timestamp(date: customEvent.endTime ?? Date()),
+                    "duration": customEvent.duration,
+                    "description": customEvent.description.joined(separator: "\n"),
+                    "isRecurring": customEvent.isRecurring,
+                    "isAllDay": customEvent.isAllDay,
+                    "allowSplit": customEvent.allowSplit,
+                    "allowOverlap": customEvent.allowOverlap,
+                    "priority": customEvent.priority.rawValue
                 ]
                 
                 // Save to Firebase
@@ -651,6 +810,7 @@ class QuestionsViewController: UIViewController {
     }
 
 
+
     func createCustomEvent(title: String, date: Date, startTime: Date, endTime: Date, duration: Int, description: String, isRecurring: Bool = false, isAllDay: Bool = false) -> CustomEvent {
         return CustomEvent(
             title: title,
@@ -661,7 +821,10 @@ class QuestionsViewController: UIViewController {
             description: [description],
             isRecurring: isRecurring,
             daysOfWeek: nil,
-            isAllDay: isAllDay
+            isAllDay: isAllDay,
+            allowSplit: false,
+            allowOverlap: false,
+            priority: .medium
         )
     }
     
@@ -670,8 +833,6 @@ class QuestionsViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
     }
-
-
 
 
 }
