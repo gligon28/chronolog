@@ -110,7 +110,10 @@ class AddEventViewController: UIViewController {
                                     description: [description],  // Wrap in array since your struct expects [String]
                                     isRecurring: isRecurring,
                                     daysOfWeek: activeDaysOfWeek,
-                                    isAllDay: false  // Default to false
+                                    isAllDay: false,  // Default to false
+                                    allowSplit: false,
+                                    allowOverlap: false,
+                                    priority: .medium
                                 )
                                 events.append(event)
                             }
@@ -130,7 +133,10 @@ class AddEventViewController: UIViewController {
                 description: [description],  // Wrap in array
                 isRecurring: isRecurring,
                 daysOfWeek: activeDaysOfWeek,
-                isAllDay: false  // Default to false
+                isAllDay: false,  // Default to false
+                allowSplit: false,
+                allowOverlap: false,
+                priority: .medium
             )
             events.append(event)
         }

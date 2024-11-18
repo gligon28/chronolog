@@ -62,7 +62,10 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                     description: [description],  // Wrap in array
                     isRecurring: isRecurring,
                     daysOfWeek: daysOfWeek,
-                    isAllDay: isAllDay
+                    isAllDay: isAllDay,
+                    allowSplit: false,
+                    allowOverlap: false,
+                    priority: .medium
                 )
                 events.append(event)
                 

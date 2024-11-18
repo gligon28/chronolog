@@ -8,6 +8,12 @@
 import Foundation
 
 struct CustomEvent {
+    enum Priority: String {
+        case low = "Low"
+        case medium = "Medium"
+        case high = "High"
+    }
+    
     var title: String
     var date: Date?
     var startTime: Date?
@@ -17,4 +23,7 @@ struct CustomEvent {
     var isRecurring: Bool
     var daysOfWeek: [String: Bool]?
     var isAllDay: Bool
+    var allowSplit: Bool
+    var allowOverlap: Bool
+    var priority: Priority
 }
