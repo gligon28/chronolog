@@ -9,12 +9,42 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
     let db = Firestore.firestore()
     let userID = Auth.auth().currentUser?.uid
     var customEvents = [CustomEvent]()
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Calendar"
         self.tabBarController?.delegate = self
-
+        
+        // Configure navigation bar appearance
+        if let navigationController = navigationController {
+            navigationController.navigationBar.setBackgroundImage(UIImage(), for: .default)
+            navigationController.navigationBar.shadowImage = UIImage()
+            navigationController.navigationBar.backgroundColor = .white
+            navigationController.navigationBar.isTranslucent = false
+            
+            // Ensure navigation bar items are visible
+            navigationController.navigationBar.tintColor = .label
+            navigationController.navigationBar.titleTextAttributes = [
+                NSAttributedString.Key.foregroundColor: UIColor.label
+            ]
+        }
+        
+        // Configure calendar background
+        view.backgroundColor = .systemBackground
+        
+        // Configure calendar settings
+        dayView.backgroundColor = .white
+        
+        fetchEvents { [weak self] events in
+            self?.customEvents = events
+            self?.reloadData()
+        }
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // Refresh data whenever view appears
         fetchEvents { [weak self] events in
             self?.customEvents = events
             self?.reloadData()
@@ -47,6 +77,18 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                 let isRecurring = data["isRecurring"] as? Bool ?? false
                 let daysOfWeek = data["daysOfWeek"] as? [String: Bool]
                 let isAllDay = data["isAllDay"] as? Bool ?? false
+                let allowSplit = data["allowSplit"] as? Bool ?? false
+                let allowOverlap = data["allowOverlap"] as? Bool ?? false
+                
+                // Handle priority conversion
+                let priorityString = data["priority"] as? String ?? "medium"
+                let priority: CustomEvent.Priority = {
+                    switch priorityString.lowercased() {
+                    case "high": return .high
+                    case "low": return .low
+                    default: return .medium
+                    }
+                }()
                 
                 let startTime = startTimestamp?.dateValue()
                 let endTime = endTimestamp?.dateValue()
@@ -63,9 +105,9 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                     isRecurring: isRecurring,
                     daysOfWeek: daysOfWeek,
                     isAllDay: isAllDay,
-                    allowSplit: false,
-                    allowOverlap: false,
-                    priority: .medium
+                    allowSplit: allowSplit,
+                    allowOverlap: allowOverlap,
+                    priority: priority
                 )
                 events.append(event)
                 
@@ -74,9 +116,9 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             completion(events)
         }
     }
-
-
-
+    
+    
+    
     override func eventsForDate(_ date: Date) -> [EventDescriptor] {
         var eventDescriptors = [EventDescriptor]()
         let calendar = Calendar.current
@@ -110,7 +152,7 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             return event1.dateInterval.start < event2.dateInterval.start
         }
     }
-
+    
     
     private func createEventDescriptor(for event: CustomEvent, on date: Date, appendingTo eventDescriptors: inout [EventDescriptor]) {
         let eventDescriptor = Event()
@@ -122,7 +164,7 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             let midnight = Calendar.current.startOfDay(for: date)
             guard let nextMidnight = Calendar.current.date(byAdding: .day, value: 1, to: midnight) else { return }
             eventDescriptor.dateInterval = DateInterval(start: midnight, end: nextMidnight)
-            eventDescriptor.backgroundColor = .systemPurple
+            eventDescriptor.backgroundColor = .systemBlue
         } else {
             // Handle timed events
             guard let startTime = event.startTime ?? event.date else { return }
@@ -131,12 +173,12 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             if let explicitEndTime = event.endTime {
                 endTime = explicitEndTime
             } else {
-                let durationSeconds = Double(event.duration ?? 3600)  // Default to 1 hour if nil
+                let durationSeconds = Double(event.duration)
                 endTime = startTime.addingTimeInterval(durationSeconds)
             }
             
             eventDescriptor.dateInterval = DateInterval(start: startTime, end: endTime)
-            eventDescriptor.backgroundColor = .systemBlue
+            eventDescriptor.backgroundColor = .systemOrange
         }
         
         eventDescriptor.textColor = .white
@@ -162,4 +204,119 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             return "\(minutes)m"
         }
     }
+    
+    override func dayViewDidSelectEventView(_ eventView: EventView) {
+        guard let selectedEventDescriptor = eventView.descriptor as? Event else {
+            return
+        }
+        
+        // Modified matching logic to handle both all-day and regular events
+        let matchingEvent = customEvents.first { event in
+            if event.isAllDay {
+                // For all-day events, match based on date and title
+                if let eventDate = event.date {
+                    let isSameDay = Calendar.current.isDate(eventDate, inSameDayAs: selectedEventDescriptor.dateInterval.start)
+                    return isSameDay && selectedEventDescriptor.text.contains(event.title)
+                }
+                return false
+            } else {
+                // For regular events, match based on start/end times and title
+                if let eventStart = event.startTime ?? event.date,
+                   let eventEnd = event.endTime {
+                    return selectedEventDescriptor.dateInterval.start == eventStart &&
+                           selectedEventDescriptor.dateInterval.end == eventEnd &&
+                           selectedEventDescriptor.text.contains(event.title)
+                }
+                return false
+            }
+        }
+        
+        if let event = matchingEvent {
+            showEventDetails(for: event)
+        }
+    }
+
+    // Add handler for all-day events specifically
+    override func dayViewDidLongPressEventView(_ eventView: EventView) {
+        // Handle the event selection the same way as regular events
+        dayViewDidSelectEventView(eventView)
+    }
+        
+    private func showEventDetails(for event: CustomEvent) {
+        let alert = UIAlertController(title: event.title, message: nil, preferredStyle: .alert)
+        
+        let dateFormatter = DateFormatter()
+//        dateFormatter.dateStyle = .medium
+//        dateFormatter.timeStyle = .short
+        
+        var details = [String]()
+        
+        if event.isAllDay {
+            // For all-day events, only show the date without time
+            dateFormatter.dateStyle = .medium
+            dateFormatter.timeStyle = .none
+            if let date = event.date {
+                details.append("Date: \(dateFormatter.string(from: date))")
+            }
+            details.append("All Day Event")
+        } else {
+            // For regular events, show date and time
+            dateFormatter.dateStyle = .medium
+            dateFormatter.timeStyle = .short
+            if let start = event.startTime {
+                details.append("Starts: \(dateFormatter.string(from: start))")
+            }
+            if let end = event.endTime {
+                details.append("Ends: \(dateFormatter.string(from: end))")
+            }
+            
+            // Handle duration display
+            if let durationValue: Int? = event.duration {
+                let hours = durationValue! / 3600
+                let minutes = (durationValue! % 3600) / 60
+                if hours > 0 {
+                    details.append("Duration: \(hours)h \(minutes)m")
+                } else {
+                    details.append("Duration: \(minutes)m")
+                }
+            }
+        }
+            
+        details.append("Priority: \(event.priority.rawValue.capitalized)")
+        
+        // Add notes without duplicating them
+        if let firstNote = event.description.first, !firstNote.isEmpty {
+            details.append("Notes: \(firstNote)")
+        }
+        
+        let settingsInfo = [
+                event.allowSplit ? "Splitting Allowed" : nil,
+                event.allowOverlap ? "Overlapping Allowed" : nil
+        ].compactMap { $0 }
+        
+        if !settingsInfo.isEmpty {
+            details.append("Settings: \(settingsInfo.joined(separator: ", "))")
+        }
+        
+        // Create attributed string with left alignment
+        let attributedString = NSMutableAttributedString(string: details.joined(separator: "\n"))
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .left
+        
+        let attributes: [NSAttributedString.Key: Any] = [
+            .paragraphStyle: paragraphStyle,
+            .font: UIFont.systemFont(ofSize: 14)
+        ]
+        
+        attributedString.addAttributes(attributes, range: NSRange(location: 0, length: attributedString.length))
+        
+        // Set the attributed message
+        alert.setValue(attributedString, forKey: "attributedMessage")
+        
+        alert.addAction(UIAlertAction(title: "Close", style: .default))
+        
+        present(alert, animated: true)
+    }
 }
+
+
