@@ -32,6 +32,7 @@
 		5054B3472CA11FA00020F9C3 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 5054B3462CA11FA00020F9C3 /* FirebaseFirestore */; };
 		5054B3492CA11FA00020F9C3 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 5054B3482CA11FA00020F9C3 /* FirebaseStorage */; };
 		505E35952CC18ACF0060CA2E /* AddEventViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 505E35942CC18ACF0060CA2E /* AddEventViewController.swift */; };
+		506D4A0D2CFF920500D4128F /* AIConflictResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 506D4A0C2CFF920500D4128F /* AIConflictResolver.swift */; };
 		50759B292CBB2BA100B6D89A /* CalendarKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50759B282CBB2BA100B6D89A /* CalendarKit */; };
 		50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */; };
 		50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */; };
@@ -53,6 +54,7 @@
 /* Begin PBXFileReference section */
 		5054B33D2CA1110A0020F9C3 /* QuestionsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionsViewController.swift; sourceTree = "<group>"; };
 		505E35942CC18ACF0060CA2E /* AddEventViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddEventViewController.swift; sourceTree = "<group>"; };
+		506D4A0C2CFF920500D4128F /* AIConflictResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIConflictResolver.swift; sourceTree = "<group>"; };
 		50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarViewController.swift; sourceTree = "<group>"; };
 		50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEvent.swift; sourceTree = "<group>"; };
 		508A253B2CAB4D0F00488B39 /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
@@ -144,6 +146,7 @@
 				50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */,
 				50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */,
 				505E35942CC18ACF0060CA2E /* AddEventViewController.swift */,
+				506D4A0C2CFF920500D4128F /* AIConflictResolver.swift */,
 			);
 			path = chronolog;
 			sourceTree = "<group>";
@@ -263,6 +266,7 @@
 				D19AE1552CD28623005314EC /* SettingsViewController.swift in Sources */,
 				D1A3455D2CA0DDDC005B1F44 /* UserActivities.swift in Sources */,
 				D19523AB2C9F871900762B0D /* SceneDelegate.swift in Sources */,
+				506D4A0D2CFF920500D4128F /* AIConflictResolver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
