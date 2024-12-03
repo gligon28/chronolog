@@ -409,8 +409,37 @@ class AddEventViewController: UIViewController {
                 let requiredEndDate = startDatePicker.date.addingTimeInterval(picker.countDownDuration)
                 endDatePicker.setDate(requiredEndDate, animated: true)
                 endDatePicker.minimumDate = requiredEndDate
-
-                print("Duration enabled: Adjusted end date to \(requiredEndDate)")
+                
+                // Find the scroll view by traversing up the view hierarchy
+                var currentView = container as UIView
+                var scrollView: UIScrollView?
+                
+                while currentView.superview != nil {
+                    if let foundScrollView = currentView.superview as? UIScrollView {
+                        scrollView = foundScrollView
+                        break
+                    }
+                    currentView = currentView.superview!
+                }
+                
+                // Ensure we found the scroll view and handle the scrolling
+                if let scrollView = scrollView {
+                    // Force layout update
+                    scrollView.layoutIfNeeded()
+                    container.layoutIfNeeded()
+                    
+                    // Convert container's frame to scroll view's coordinate space
+                    let containerRect = container.convert(container.bounds, to: scrollView)
+                    let bottomOfContainer = containerRect.maxY // Add padding
+                    
+                    // Calculate new offset
+                    let newOffset = bottomOfContainer - scrollView.bounds.height
+                    if newOffset > scrollView.contentOffset.y {
+                        DispatchQueue.main.async {
+                            scrollView.setContentOffset(CGPoint(x: 0, y: newOffset), animated: true)
+                        }
+                    }
+                }
             }
         }
     }

@@ -164,7 +164,8 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             let midnight = Calendar.current.startOfDay(for: date)
             guard let nextMidnight = Calendar.current.date(byAdding: .day, value: 1, to: midnight) else { return }
             eventDescriptor.dateInterval = DateInterval(start: midnight, end: nextMidnight)
-            eventDescriptor.backgroundColor = .systemBlue
+//            eventDescriptor.backgroundColor = .systemBlue
+            eventDescriptor.backgroundColor = UIColor(hex: "#C87501")
         } else {
             // Handle timed events
             guard let startTime = event.startTime ?? event.date else { return }
@@ -320,3 +321,19 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
 }
 
 
+// Add UIColor extension for hex color support if not already present
+extension UIColor {
+    convenience init(hex: String) {
+        var hexString = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexString = hexString.replacingOccurrences(of: "#", with: "")
+        
+        var rgb: UInt64 = 0
+        Scanner(string: hexString).scanHexInt64(&rgb)
+        
+        let red = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+        let green = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+        let blue = CGFloat(rgb & 0x0000FF) / 255.0
+        
+        self.init(red: red, green: green, blue: blue, alpha: 1.0)
+    }
+}
