@@ -4,6 +4,13 @@ import CalendarKit
 import FirebaseFirestore
 import FirebaseAuth
 
+extension Date {
+    /// Returns true if the absolute difference between the receiver and another date is less than tolerance.
+    func isApproximatelyEqual(to other: Date, tolerance: TimeInterval = 1) -> Bool {
+        return abs(self.timeIntervalSince(other)) < tolerance
+    }
+}
+
 class CalendarViewController: DayViewController, UITabBarControllerDelegate {
     
     let db = Firestore.firestore()
@@ -120,38 +127,38 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
     
     
     override func eventsForDate(_ date: Date) -> [EventDescriptor] {
-        var eventDescriptors = [EventDescriptor]()
-        let calendar = Calendar.current
-        
-        for event in customEvents {
-            if event.isRecurring {
-                let dayIndex = calendar.component(.weekday, from: date) - 1
-                let dayName = calendar.weekdaySymbols[dayIndex]
-                
-                if let daysOfWeek = event.daysOfWeek,
-                   daysOfWeek[dayName, default: false] {
-                    createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
-                }
-            } else {
-                // Handle both startTime and date fields
-                if let eventStartTime = event.startTime {
-                    if calendar.isDate(eventStartTime, inSameDayAs: date) {
-                        createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
-                    }
-                } else if let eventDate = event.date {  // Changed to proper optional binding
-                    if calendar.isDate(eventDate, inSameDayAs: date) {
-                        createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
-                    }
-                }
-            }
-        }
-        
-        return eventDescriptors.sorted { event1, event2 in
-            if event1.isAllDay && !event2.isAllDay { return true }
-            if !event1.isAllDay && event2.isAllDay { return false }
-            return event1.dateInterval.start < event2.dateInterval.start
-        }
-    }
+       var eventDescriptors = [EventDescriptor]()
+       let calendar = Calendar.current
+       
+       for event in customEvents {
+           if event.isRecurring {
+               let dayIndex = calendar.component(.weekday, from: date) - 1
+               let dayName = calendar.weekdaySymbols[dayIndex]
+               if let daysOfWeek = event.daysOfWeek,
+                  daysOfWeek[dayName, default: false] {
+                   createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
+               }
+           } else {
+               if let eventStartTime = event.startTime {
+                   if calendar.isDate(eventStartTime, inSameDayAs: date) {
+                       createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
+                   }
+               } else if let eventDate = event.date {
+                   if calendar.isDate(eventDate, inSameDayAs: date) {
+                       createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
+                   }
+               }
+           }
+       }
+       
+       // Sort descriptors by start time.
+       eventDescriptors.sort { $0.dateInterval.start < $1.dateInterval.start }
+       
+       // Normalize event descriptors using a tolerance threshold.
+       normalizeEventDescriptors(&eventDescriptors, tolerance: 1)
+       
+       return eventDescriptors
+   }
     
     
     private func createEventDescriptor(for event: CustomEvent, on date: Date, appendingTo eventDescriptors: inout [EventDescriptor]) {
@@ -184,6 +191,24 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         
         eventDescriptor.textColor = .white
         eventDescriptors.append(eventDescriptor)
+    }
+    
+    /// Adjusts the start times of event descriptors so that if one event's end is nearly equal to the next event's start (within the tolerance),
+    /// the next event's start time is snapped to the previous event's end time.
+    private func normalizeEventDescriptors(_ descriptors: inout [EventDescriptor], tolerance: TimeInterval) {
+        guard descriptors.count > 1 else { return }
+        for i in 1..<descriptors.count {
+            let previous = descriptors[i - 1]
+            let current = descriptors[i]
+            // If the gap between previous event's end and current event's start is less than tolerance,
+            // adjust current event's start to match previous event's end.
+            if previous.dateInterval.end.isApproximatelyEqual(to: current.dateInterval.start, tolerance: tolerance) {
+                let duration = current.dateInterval.end.timeIntervalSince(current.dateInterval.start)
+                let newStart = previous.dateInterval.end
+                let newEnd = newStart.addingTimeInterval(duration)
+                current.dateInterval = DateInterval(start: newStart, end: newEnd)
+            }
+        }
     }
     
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {

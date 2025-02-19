@@ -475,53 +475,26 @@ class AddEventViewController: UIViewController {
         }
         return nil
     }
-
-
-    // MARK: - Save Event Logic
-        @objc func saveEvent() {
-            if validateEventData() {
-                saveToFirebase()
-                promptToAddAnotherEvent()
-            }
-        }
-
-        func validateEventData() -> Bool {
-            guard let container = stackView.arrangedSubviews.first as? UIStackView else { return false }
-            let startDatePicker = container.arrangedSubviews
-                .compactMap { ($0 as? UIStackView)?.arrangedSubviews.first as? UIDatePicker }
-                .first
-            let endDatePicker = container.arrangedSubviews
-                .compactMap { ($0 as? UIStackView)?.arrangedSubviews.last as? UIDatePicker }
-                .first
-
-            if let startDate = startDatePicker?.date, let endDate = endDatePicker?.date {
-                if endDate < startDate {
-                    showAlert(title: "Invalid Dates", message: "End date cannot be before start date.")
-                    return false
-                }
-            }
-            return true
-        }
-
-    func saveToFirebase() {
+    
+    // MARK: - Helper to Build Custom Event
+    /// Builds a new CustomEvent from the input fields.
+    /// If required fields are missing, it animates the title field and shows an alert.
+    func buildCustomEventFromInput() -> CustomEvent? {
         guard let container = stackView.arrangedSubviews.first as? UIStackView,
-              let userID = Auth.auth().currentUser?.uid else {
-            print("Error: Could not find container or user ID")
-            return
+              Auth.auth().currentUser != nil else {
+            print("Error: Could not find container or user not authenticated")
+            return nil
         }
         
-        // Get the title field
+        // Get the title field.
         guard let titleField = container.arrangedSubviews.first(where: { $0 is UITextField }) as? UITextField else {
-            return
+            return nil
         }
-        // Validate title field
         if titleField.text?.isEmpty ?? true {
-            // Add red border to title field
             titleField.layer.borderWidth = 1.5
             titleField.layer.borderColor = UIColor.systemRed.cgColor
             titleField.layer.cornerRadius = 5.0
             
-            // Animate the border appearance
             let animation = CABasicAnimation(keyPath: "borderColor")
             animation.fromValue = UIColor.clear.cgColor
             animation.toValue = UIColor.systemRed.cgColor
@@ -529,53 +502,60 @@ class AddEventViewController: UIViewController {
             titleField.layer.add(animation, forKey: "borderColor")
             
             showAlert(title: "Missing Information", message: "Please fill in all required fields.")
-            return
+            return nil
         }
-        
-        // Clear the red border if validation passes
         titleField.layer.borderWidth = 0
         
-        let locationField = container.arrangedSubviews.first(where: { ($0 as? UITextField)?.placeholder == "Enter location" }) as? UITextField
         let startDatePicker = findDatePicker(in: container, withLabel: "Starts")
         let endDatePicker = findDatePicker(in: container, withLabel: "Ends")
+        
+        // Get optional switches and note field.
         let allDaySwitch = container.arrangedSubviews
             .compactMap { $0 as? UIStackView }
-            .first { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "All-day" } }?
+            .first(where: { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "All-day" } })?
             .arrangedSubviews.compactMap { $0 as? UISwitch }.first
-        let noteContainer = container.arrangedSubviews
-            .first(where: { ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Add a Note" }) == true }) as? UIStackView
-        let noteField = noteContainer?.arrangedSubviews.last as? UITextField
+        
+        let noteField = (container.arrangedSubviews.first(where: { subview in
+            if let sv = subview as? UIStackView {
+                return sv.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add a Note" }
+            }
+            return false
+        }) as? UIStackView)?.arrangedSubviews.last as? UITextField
+        
         let durationPicker = durationPickers[container]
+        
         let allowSplitSwitch = container.arrangedSubviews
             .compactMap { $0 as? UIStackView }
-            .first { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Allow Splitting" } }?
+            .first(where: { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Allow Splitting" } })?
             .arrangedSubviews.compactMap { $0 as? UISwitch }.first
+        
         let allowOverlapSwitch = container.arrangedSubviews
             .compactMap { $0 as? UIStackView }
-            .first { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Allow Overlap" } }?
+            .first(where: { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Allow Overlap" } })?
             .arrangedSubviews.compactMap { $0 as? UISwitch }.first
+        
         let priorityControl = container.arrangedSubviews
             .compactMap { $0 as? UIStackView }
-            .first { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Priority" } }?
+            .first(where: { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Priority" } })?
             .arrangedSubviews.compactMap { $0 as? UISegmentedControl }.first
-            
-        // Validate required fields
+        
+        // Ensure required fields exist.
         guard let title = titleField.text, !title.isEmpty,
               let startDate = startDatePicker?.date,
-              let endDate = endDatePicker?.date else {
-            return
+              let endDate = endDatePicker?.date
+        else {
+            return nil
         }
         
-        // Create event data
         let isAllDay = allDaySwitch?.isOn ?? false
         let allowSplit = allowSplitSwitch?.isOn ?? false
         let allowOverlap = allowOverlapSwitch?.isOn ?? false
-        let duration = durationPicker?.isHidden == false ? Int(durationPicker?.countDownDuration ?? 0) : Int(endDate.timeIntervalSince(startDate))
-        let description = noteField?.text ?? ""
+        let duration = (durationPicker?.isHidden == false) ? Int(durationPicker?.countDownDuration ?? 0) : Int(endDate.timeIntervalSince(startDate))
+        let descriptionText = noteField?.text ?? ""
         
-        // Determine priority
         let priority: CustomEvent.Priority = {
-            switch priorityControl?.selectedSegmentIndex {
+            guard let index = priorityControl?.selectedSegmentIndex else { return .medium }
+            switch index {
             case 0: return .high
             case 1: return .medium
             case 2: return .low
@@ -583,14 +563,13 @@ class AddEventViewController: UIViewController {
             }
         }()
         
-        // Create CustomEvent instance
         let customEvent = CustomEvent(
             title: title,
-            date: startDate,
+            date: startDate, // Using the start date as the event date.
             startTime: startDate,
             endTime: endDate,
             duration: duration,
-            description: [description],
+            description: [descriptionText],
             isRecurring: false,
             daysOfWeek: nil,
             isAllDay: isAllDay,
@@ -598,42 +577,288 @@ class AddEventViewController: UIViewController {
             allowOverlap: allowOverlap,
             priority: priority
         )
+        return customEvent
+    }
+
+    func fetchExistingEvents(completion: @escaping ([CustomEvent]) -> Void) {
+        guard let userID = Auth.auth().currentUser?.uid else {
+            completion([])
+            return
+        }
         
         let db = Firestore.firestore()
+        db.collection("userEvents").document(userID).collection("events").getDocuments { snapshot, error in
+            if let error = error {
+                print("Error fetching documents: \(error)")
+                completion([])
+                return
+            }
+            
+            var events = [CustomEvent]()
+            for document in snapshot!.documents {
+                let data = document.data()
+                
+                // Manually extract fields from Firestore data:
+                let title = data["title"] as? String ?? "No Title"
+                let startTimestamp = data["startTime"] as? Timestamp
+                let endTimestamp = data["endTime"] as? Timestamp
+                let dateTimestamp = data["date"] as? Timestamp
+                let duration = data["duration"] as? Int ?? 0
+                let isRecurring = data["isRecurring"] as? Bool ?? false
+                let daysOfWeek = data["daysOfWeek"] as? [String: Bool]
+                let isAllDay = data["isAllDay"] as? Bool ?? false
+                let allowSplit = data["allowSplit"] as? Bool ?? false
+                let allowOverlap = data["allowOverlap"] as? Bool ?? false
+                
+                // Convert priority string to enum.
+                let priorityString = data["priority"] as? String ?? "medium"
+                let priority: CustomEvent.Priority = {
+                    switch priorityString.lowercased() {
+                    case "high": return .high
+                    case "low": return .low
+                    default: return .medium
+                    }
+                }()
+                
+                // Convert Timestamps to Date
+                let startTime = startTimestamp?.dateValue()
+                let endTime = endTimestamp?.dateValue()
+                let date = dateTimestamp?.dateValue()
+                let description = data["description"] as? String ?? ""
+                
+                let event = CustomEvent(
+                    title: title,
+                    date: date ?? startTime ?? Date(),
+                    startTime: startTime,
+                    endTime: endTime,
+                    duration: duration,
+                    description: [description],  // Wrap the description in an array.
+                    isRecurring: isRecurring,
+                    daysOfWeek: daysOfWeek,
+                    isAllDay: isAllDay,
+                    allowSplit: allowSplit,
+                    allowOverlap: allowOverlap,
+                    priority: priority
+                )
+                events.append(event)
+                
+                print("Fetched event: \(title) from \(String(describing: startTime)) to \(String(describing: endTime))")
+            }
+            completion(events)
+        }
+    }
+
+    // MARK: - Save Event Logic
+    @objc func saveEvent() {
+        guard validateEventData() else { return }
         
-        // Prepare data for Firebase using the CustomEvent instance
+        // Build the new event using your helper.
+        guard let newEvent = buildCustomEventFromInput() else {
+            // An alert is already shown in the helper.
+            return
+        }
+        
+        // Fetch existing events from Firebase.
+        fetchExistingEvents { [weak self] existingEvents in
+            guard let self = self else { return }
+            if self.hasConflict(newEvent: newEvent, existingEvents: existingEvents) {
+                print("Conflict detected. Calling AI conflict resolver...")
+                let hud = self.showConflictResolutionHUD()
+                let openAIClient = OpenAIAPIClient(apiKey: Config.openAIToken)
+                let optimizer = ScheduleOptimizer(openAIClient: openAIClient)
+                
+                Task {
+                    do {
+                        // Our resolver now returns candidate solutions directly.
+                        let candidateSolutions = try await optimizer.resolveConflicts(existingEvents: existingEvents, newEvent: newEvent)
+                        
+                        // Remove duplicates.
+                        // We assume that each candidate solution contains an event matching the new event's title.
+                        var uniqueCandidates: [[CustomEvent]] = []
+                        var seenKeys = Set<String>()
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ" // ISO format for comparison
+                        
+                        for candidate in candidateSolutions {
+                            if let candidateEvent = candidate.first(where: { $0.title == newEvent.title }),
+                               let startTime = candidateEvent.startTime,
+                               let endTime = candidateEvent.endTime {
+                                let key = "\(dateFormatter.string(from: startTime))-\(dateFormatter.string(from: endTime))"
+                                if !seenKeys.contains(key) {
+                                    uniqueCandidates.append(candidate)
+                                    seenKeys.insert(key)
+                                }
+                            }
+                        }
+                        
+                        await MainActor.run {
+                            hud.dismiss(animated: true, completion: {
+                                if uniqueCandidates.isEmpty {
+                                    self.showAlert(title: "Error", message: "No valid candidate solutions were returned.")
+                                } else {
+                                    self.presentResolvedSchedule(uniqueCandidates, newEvent: newEvent, conflictingEvents: existingEvents.filter {
+                                        guard let newStart = newEvent.startTime, let newEnd = newEvent.endTime,
+                                              let eventStart = $0.startTime, let eventEnd = $0.endTime else { return false }
+                                        return newStart < eventEnd && newEnd > eventStart
+                                    })
+                                }
+                            })
+                        }
+                    } catch {
+                        await MainActor.run {
+                            hud.dismiss(animated: true, completion: {
+                                self.showAlert(title: "Resolution Error", message: "Failed to resolve conflicts: \(error.localizedDescription)")
+                            })
+                        }
+                    }
+                }
+            } else {
+                // No conflict: save directly.
+                DispatchQueue.main.async {
+                    self.saveToFirebase(newEvent: newEvent)
+                    self.promptToAddAnotherEvent()
+                }
+            }
+        }
+    }
+
+
+
+
+    
+    func hasConflict(newEvent: CustomEvent, existingEvents: [CustomEvent]) -> Bool {
+        guard let newStart = newEvent.startTime, let newEnd = newEvent.endTime else {
+            return false
+        }
+        for event in existingEvents {
+            guard let existingStart = event.startTime, let existingEnd = event.endTime else { continue }
+            // If new event starts before an existing event ends
+            // and ends after an existing event starts, there is overlap.
+            if newStart < existingEnd && newEnd > existingStart {
+                return true
+            }
+        }
+        return false
+    }
+
+
+    func validateEventData() -> Bool {
+        guard let container = stackView.arrangedSubviews.first as? UIStackView else { return false }
+        let startDatePicker = container.arrangedSubviews
+            .compactMap { ($0 as? UIStackView)?.arrangedSubviews.first as? UIDatePicker }
+            .first
+        let endDatePicker = container.arrangedSubviews
+            .compactMap { ($0 as? UIStackView)?.arrangedSubviews.last as? UIDatePicker }
+            .first
+
+        if let startDate = startDatePicker?.date, let endDate = endDatePicker?.date {
+            if endDate < startDate {
+                showAlert(title: "Invalid Dates", message: "End date cannot be before start date.")
+                return false
+            }
+        }
+        return true
+    }
+
+
+    // MARK: - Modified Save to Firebase
+    /// Saves the given event to Firebase.
+    func saveToFirebase(newEvent: CustomEvent) {
+        guard let userID = Auth.auth().currentUser?.uid else {
+            print("Error: User not authenticated")
+            return
+        }
+        let db = Firestore.firestore()
         let eventData: [String: Any] = [
-            "title": customEvent.title,
-            "date": Timestamp(date: customEvent.date ?? Date()),
-            "startTime": Timestamp(date: customEvent.startTime ?? Date()),
-            "endTime": Timestamp(date: customEvent.endTime ?? Date()),
-            "duration": customEvent.duration,
-            "description": customEvent.description.joined(separator: "\n"),
-            "isRecurring": customEvent.isRecurring,
-            "isAllDay": customEvent.isAllDay,
-            "allowSplit": customEvent.allowSplit,
-            "allowOverlap": customEvent.allowOverlap,
-            "priority": customEvent.priority.rawValue
+            "title": newEvent.title,
+            "date": newEvent.date ?? Date(),
+            "startTime": newEvent.startTime ?? Date(),
+            "endTime": newEvent.endTime ?? Date(),
+            "duration": newEvent.duration,
+            "description": newEvent.description.joined(separator: "\n"),
+            "isRecurring": newEvent.isRecurring,
+            "isAllDay": newEvent.isAllDay,
+            "allowSplit": newEvent.allowSplit,
+            "allowOverlap": newEvent.allowOverlap,
+            "priority": newEvent.priority.rawValue
         ]
         
         print("Attempting to save event with data:", eventData)
         
-        // Save to Firebase
         db.collection("userEvents").document(userID).collection("events").addDocument(data: eventData) { [weak self] error in
             guard let self = self else { return }
-            
-            if let error = error {
-                print("Error saving event to Firebase: \(error)")
-                DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("Error saving event to Firebase:", error)
                     self.showAlert(title: "Error", message: "Failed to save event. Please try again.")
-                }
-            } else {
-                print("Event saved successfully")
-                DispatchQueue.main.async {
+                } else {
+                    print("Event saved successfully")
                     self.resetForm()
                     self.promptToAddAnotherEvent()
                 }
             }
+        }
+    }
+    
+    /// Presents an alert with an activity indicator to show progress.
+    /// Returns the presented alert so you can dismiss it later.
+    func showConflictResolutionHUD() -> UIAlertController {
+        let hud = UIAlertController(title: "Conflict Detected", message: "Searching for solutions...", preferredStyle: .alert)
+        
+        // Create and configure an activity indicator.
+        let indicator = UIActivityIndicatorView(style: .medium)
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.isUserInteractionEnabled = false
+        indicator.startAnimating()
+        
+        hud.view.addSubview(indicator)
+        
+        // Center the indicator horizontally, and place it near the bottom of the alert.
+        NSLayoutConstraint.activate([
+            indicator.centerXAnchor.constraint(equalTo: hud.view.centerXAnchor),
+            indicator.bottomAnchor.constraint(equalTo: hud.view.bottomAnchor, constant: -20)
+        ])
+        
+        self.present(hud, animated: true, completion: nil)
+        return hud
+    }
+    
+    func presentResolvedSchedule(_ candidateSolutions: [[CustomEvent]], newEvent: CustomEvent, conflictingEvents: [CustomEvent]) {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MMM d, yyyy h:mm a"
+        
+        // Build header with original requested time and a summary of conflicts.
+        let originalStart = newEvent.startTime ?? Date()
+        let originalEnd = newEvent.endTime ?? Date()
+        let originalTime = "Original: \n \(dateFormatter.string(from: originalStart)) – \(dateFormatter.string(from: originalEnd))"
+        
+        let conflictsDescription = conflictingEvents.map { event in
+            if let s = event.startTime, let e = event.endTime {
+                return "\(event.title): \(dateFormatter.string(from: s)) – \(dateFormatter.string(from: e))"
+            }
+            return event.title
+        }.joined(separator: "\n")
+        
+        let headerMessage = "\(originalTime)\nConflicts:\n\(conflictsDescription)"
+        
+        let alert = UIAlertController(title: "Proposed Solutions", message: headerMessage, preferredStyle: .actionSheet)
+        
+        for (index, candidate) in candidateSolutions.enumerated() {
+            if let candidateEvent = candidate.first(where: { $0.title == newEvent.title }),
+               let newStart = candidateEvent.startTime,
+               let newEnd = candidateEvent.endTime {
+                let optionTitle = "Option \(index+1): \(dateFormatter.string(from: newStart)) – \(dateFormatter.string(from: newEnd))"
+                alert.addAction(UIAlertAction(title: optionTitle, style: .default, handler: { _ in
+                    self.saveToFirebase(newEvent: candidateEvent)
+                    self.promptToAddAnotherEvent()
+                }))
+            }
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        
+        DispatchQueue.main.async {
+            self.present(alert, animated: true)
         }
     }
 

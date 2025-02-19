@@ -43,7 +43,7 @@ class ScheduleOptimizer {
         self.openAIClient = openAIClient
     }
     
-    func resolveConflicts(existingEvents: [CustomEvent], newEvent: CustomEvent) async throws -> [CustomEvent] {
+    func resolveConflicts(existingEvents: [CustomEvent], newEvent: CustomEvent) async throws -> [[CustomEvent]] {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = .prettyPrinted
@@ -74,29 +74,61 @@ class ScheduleOptimizer {
         
         do {
             let openAIResponse = try JSONDecoder().decode(OpenAIResponse.self, from: jsonData)
+            // Assume openAIResponse is already decoded into your OpenAIResponse struct.
             guard let content = openAIResponse.choices.first?.message.content else {
                 throw ScheduleError.decodingError
             }
-            
-            // Find the JSON array in the content
-            guard let jsonStart = content.firstIndex(of: "["),
-                  let jsonEnd = content.lastIndex(of: "]") else {
+
+            // Extract all JSON blocks.
+            let jsonBlocks = extractAllJSONBlocks(from: content)
+            if jsonBlocks.isEmpty {
+                print("No JSON block found in response: \(content)")
                 throw ScheduleError.decodingError
             }
-            
-            let jsonString = String(content[jsonStart...jsonEnd])
-            guard let eventData = jsonString.data(using: .utf8) else {
+
+            var candidateSolutions: [[CustomEvent]] = []
+            for block in jsonBlocks {
+                if let data = block.data(using: .utf8) {
+                    do {
+                        let candidate = try decoder.decode([CustomEvent].self, from: data)
+                        candidateSolutions.append(candidate)
+                    } catch {
+                        print("Decoding error for a candidate block: \(error)")
+                        // You may choose to continue or throw an error.
+                    }
+                }
+            }
+
+            if candidateSolutions.isEmpty {
                 throw ScheduleError.decodingError
             }
-            
-            return try decoder.decode([CustomEvent].self, from: eventData)
-        } catch {
-            print("\nDecoding error details:")
-            print(error)
-            throw error
+
+            // At this point, candidateSolutions is an array where each element is an array of CustomEvent
+            // (each candidate solution from the model).
+            return candidateSolutions
         }
     }
 }
+
+func extractAllJSONBlocks(from content: String) -> [String] {
+    var jsonBlocks = [String]()
+    // Split the content by the code fence delimiter.
+    let parts = content.components(separatedBy: "```")
+    for part in parts {
+        // Trim whitespace and newlines.
+        var trimmed = part.trimmingCharacters(in: .whitespacesAndNewlines)
+        // If the trimmed part starts with "json" (case-sensitive), remove it.
+        if trimmed.lowercased().hasPrefix("json") {
+            trimmed = String(trimmed.dropFirst(4)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        // If the trimmed part now starts with "[" and ends with "]", assume it’s a valid JSON array.
+        if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+            jsonBlocks.append(trimmed)
+        }
+    }
+    return jsonBlocks
+}
+
 
 // MARK: - OpenAI Client Protocol and Implementation
 protocol OpenAIClient {
@@ -118,18 +150,18 @@ class OpenAIAPIClient: OpenAIClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         let systemPrompt = """
-            You are an expert event scheduler. Return ONLY a JSON array containing all events after resolving conflicts.
-            Follow these rules in order of importance:
-            1. Schedule events as early as possible while respecting:
-                - Event priorities (Higher priority events take precedence)
-                - All event deadlines must be met
-                - Existing recurring event patterns must be maintained
-            2. Handle conflicts according to these rules:
-                - Only events with allowOverlap=true can overlap
-                - Events marked as splitable can be broken into smaller segments if needed
-                    
-            Important: Always try to schedule new events at the earliest possible time slot that satisfies all constraints.
-            Return ONLY valid JSON array with the optimized schedule.
+            You are an expert event scheduler. Given the events above. Return ONLY a JSON array containing all events after resolving conflicts. Give three distinct solutions.
+                        Follow these rules in order of importance:
+                        1. Schedule events as early as possible while respecting:
+                            - Event priorities (Higher priority events take precedence)
+                            - All event deadlines must be met
+                            - Existing recurring event patterns must be maintained
+                        2. Handle conflicts according to these rules:
+                            - Only events with allowOverlap=true can overlap
+                            - Events marked as splitable can be broken into smaller segments if needed
+                                
+                        Important: Always try to schedule new events at the earliest possible time slot that satisfies all constraints.
+                        Return ONLY valid JSON array with the optimized schedule.
             """
                 
             let userPrompt = """
@@ -146,8 +178,8 @@ class OpenAIAPIClient: OpenAIClient {
             let payload: [String: Any] = [
                 "model": "gpt-4o",
                 "messages": messages,
-                "temperature": 0.0,
-                "max_tokens": 4000
+                "temperature": 0.3,
+                "max_tokens": 5428
             ]
         
         // Debug printing of the full prompt

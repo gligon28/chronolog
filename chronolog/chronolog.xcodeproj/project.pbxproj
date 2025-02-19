@@ -37,6 +37,7 @@
 		50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */; };
 		50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */; };
 		508A253C2CAB4D0F00488B39 /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508A253B2CAB4D0F00488B39 /* HomeViewController.swift */; };
+		D18EE1A32D5D05A90010BE2D /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = D18EE1A22D5D05A90010BE2D /* Config.plist */; };
 		D19523A92C9F871900762B0D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19523A82C9F871900762B0D /* AppDelegate.swift */; };
 		D19523AB2C9F871900762B0D /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19523AA2C9F871900762B0D /* SceneDelegate.swift */; };
 		D19523AD2C9F871900762B0D /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19523AC2C9F871900762B0D /* LoginViewController.swift */; };
@@ -58,6 +59,7 @@
 		50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarViewController.swift; sourceTree = "<group>"; };
 		50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEvent.swift; sourceTree = "<group>"; };
 		508A253B2CAB4D0F00488B39 /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
+		D18EE1A22D5D05A90010BE2D /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Config.plist; sourceTree = "<group>"; };
 		D19523A52C9F871900762B0D /* chronolog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = chronolog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D19523A82C9F871900762B0D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D19523AA2C9F871900762B0D /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -147,6 +149,7 @@
 				50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */,
 				505E35942CC18ACF0060CA2E /* AddEventViewController.swift */,
 				506D4A0C2CFF920500D4128F /* AIConflictResolver.swift */,
+				D18EE1A22D5D05A90010BE2D /* Config.plist */,
 			);
 			path = chronolog;
 			sourceTree = "<group>";
@@ -242,6 +245,7 @@
 				D19523B22C9F871A00762B0D /* Assets.xcassets in Resources */,
 				D1A345562C9F9A58005B1F44 /* GoogleService-Info.plist in Resources */,
 				D19523B52C9F871A00762B0D /* Base in Resources */,
+				D18EE1A32D5D05A90010BE2D /* Config.plist in Resources */,
 				D19523B02C9F871900762B0D /* Base in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
