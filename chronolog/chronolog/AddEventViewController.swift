@@ -761,6 +761,17 @@ class AddEventViewController: UIViewController {
     }
 
 
+    let notificationManager = UserNotifications()
+        
+    func saveEventAndScheduleNotification(title: String, startTime: Date, isAllDay: Bool, priority: String) {
+        notificationManager.scheduleEventNotification(
+            title: title,
+            startTime: startTime,
+            isAllDay: isAllDay,
+            priority: priority
+        )
+    }
+
     // MARK: - Modified Save to Firebase
     /// Saves the given event to Firebase.
     func saveToFirebase(newEvent: CustomEvent) {
@@ -783,6 +794,14 @@ class AddEventViewController: UIViewController {
             "priority": newEvent.priority.rawValue
         ]
         
+        let priorityString: String = {
+            switch newEvent.priority {
+            case .high: return "high"
+            case .medium: return "medium"
+            case .low: return "low"
+            }
+        }()
+        
         print("Attempting to save event with data:", eventData)
         
         db.collection("userEvents").document(userID).collection("events").addDocument(data: eventData) { [weak self] error in
@@ -793,6 +812,13 @@ class AddEventViewController: UIViewController {
                     self.showAlert(title: "Error", message: "Failed to save event. Please try again.")
                 } else {
                     print("Event saved successfully")
+                    //create notification
+                    self.saveEventAndScheduleNotification(
+                        title: newEvent.title,
+                        startTime: newEvent.startTime ?? Date(),
+                        isAllDay: newEvent.isAllDay,
+                        priority: priorityString
+                    )
                     self.resetForm()
                     self.promptToAddAnotherEvent()
                 }

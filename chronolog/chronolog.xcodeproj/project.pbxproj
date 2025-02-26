@@ -37,6 +37,9 @@
 		50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */; };
 		50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */; };
 		508A253C2CAB4D0F00488B39 /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508A253B2CAB4D0F00488B39 /* HomeViewController.swift */; };
+		50C5475A2D6F529000E8996A /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 50C547592D6F529000E8996A /* Config.plist */; };
+		50C5475C2D6F53FD00E8996A /* UserNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C5475B2D6F53FD00E8996A /* UserNotification.swift */; };
+		50C5475E2D6F72DB00E8996A /* ProgressTrackingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C5475D2D6F72DB00E8996A /* ProgressTrackingViewController.swift */; };
 		D18EE1A32D5D05A90010BE2D /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = D18EE1A22D5D05A90010BE2D /* Config.plist */; };
 		D19523A92C9F871900762B0D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19523A82C9F871900762B0D /* AppDelegate.swift */; };
 		D19523AB2C9F871900762B0D /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19523AA2C9F871900762B0D /* SceneDelegate.swift */; };
@@ -59,6 +62,9 @@
 		50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarViewController.swift; sourceTree = "<group>"; };
 		50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEvent.swift; sourceTree = "<group>"; };
 		508A253B2CAB4D0F00488B39 /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
+		50C547592D6F529000E8996A /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Config.plist; sourceTree = "<group>"; };
+		50C5475B2D6F53FD00E8996A /* UserNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserNotification.swift; sourceTree = "<group>"; };
+		50C5475D2D6F72DB00E8996A /* ProgressTrackingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressTrackingViewController.swift; sourceTree = "<group>"; };
 		D18EE1A22D5D05A90010BE2D /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Config.plist; sourceTree = "<group>"; };
 		D19523A52C9F871900762B0D /* chronolog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = chronolog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D19523A82C9F871900762B0D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -138,6 +144,7 @@
 				D19523AC2C9F871900762B0D /* LoginViewController.swift */,
 				D1A345532C9F9864005B1F44 /* CreateAccountViewController.swift */,
 				D19523AE2C9F871900762B0D /* Main.storyboard */,
+				50C5475D2D6F72DB00E8996A /* ProgressTrackingViewController.swift */,
 				5054B33D2CA1110A0020F9C3 /* QuestionsViewController.swift */,
 				D1A345602CA0DF4F005B1F44 /* ChecklistViewController.swift */,
 				D19523B12C9F871A00762B0D /* Assets.xcassets */,
@@ -149,6 +156,8 @@
 				50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */,
 				505E35942CC18ACF0060CA2E /* AddEventViewController.swift */,
 				506D4A0C2CFF920500D4128F /* AIConflictResolver.swift */,
+				50C5475B2D6F53FD00E8996A /* UserNotification.swift */,
+				50C547592D6F529000E8996A /* Config.plist */,
 				D18EE1A22D5D05A90010BE2D /* Config.plist */,
 			);
 			path = chronolog;
@@ -246,6 +255,7 @@
 				D1A345562C9F9A58005B1F44 /* GoogleService-Info.plist in Resources */,
 				D19523B52C9F871A00762B0D /* Base in Resources */,
 				D18EE1A32D5D05A90010BE2D /* Config.plist in Resources */,
+				50C5475A2D6F529000E8996A /* Config.plist in Resources */,
 				D19523B02C9F871900762B0D /* Base in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -259,9 +269,11 @@
 			files = (
 				50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */,
 				505E35952CC18ACF0060CA2E /* AddEventViewController.swift in Sources */,
+				50C5475C2D6F53FD00E8996A /* UserNotification.swift in Sources */,
 				50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */,
 				D1A345542C9F9864005B1F44 /* CreateAccountViewController.swift in Sources */,
 				5054B33E2CA1110A0020F9C3 /* QuestionsViewController.swift in Sources */,
+				50C5475E2D6F72DB00E8996A /* ProgressTrackingViewController.swift in Sources */,
 				D1A345612CA0DF4F005B1F44 /* ChecklistViewController.swift in Sources */,
 				D1FCDA262CB42C780061EAA9 /* GetToKnowViewController.swift in Sources */,
 				508A253C2CAB4D0F00488B39 /* HomeViewController.swift in Sources */,
