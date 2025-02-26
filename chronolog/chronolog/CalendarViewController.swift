@@ -46,6 +46,8 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             self?.customEvents = events
             self?.reloadData()
         }
+        
+        
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -124,42 +126,50 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         }
     }
     
-    
-    
     override func eventsForDate(_ date: Date) -> [EventDescriptor] {
-       var eventDescriptors = [EventDescriptor]()
-       let calendar = Calendar.current
-       
-       for event in customEvents {
-           if event.isRecurring {
-               let dayIndex = calendar.component(.weekday, from: date) - 1
-               let dayName = calendar.weekdaySymbols[dayIndex]
-               if let daysOfWeek = event.daysOfWeek,
-                  daysOfWeek[dayName, default: false] {
-                   createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
-               }
-           } else {
-               if let eventStartTime = event.startTime {
-                   if calendar.isDate(eventStartTime, inSameDayAs: date) {
-                       createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
-                   }
-               } else if let eventDate = event.date {
-                   if calendar.isDate(eventDate, inSameDayAs: date) {
-                       createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
-                   }
-               }
-           }
-       }
-       
-       // Sort descriptors by start time.
-       eventDescriptors.sort { $0.dateInterval.start < $1.dateInterval.start }
-       
-       // Normalize event descriptors using a tolerance threshold.
-       normalizeEventDescriptors(&eventDescriptors, tolerance: 1)
-       
-       return eventDescriptors
-   }
-    
+        var eventDescriptors = [EventDescriptor]()
+        let calendar = Calendar.current
+        
+        for event in customEvents {
+            if event.isRecurring {
+                let dayIndex = calendar.component(.weekday, from: date) - 1
+                let dayName = calendar.weekdaySymbols[dayIndex]
+                if let daysOfWeek = event.daysOfWeek,
+                   daysOfWeek[dayName, default: false] {
+                    createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
+                }
+            } else {
+                if let eventStartTime = event.startTime {
+                    if calendar.isDate(eventStartTime, inSameDayAs: date) {
+                        createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
+                    }
+                } else if let eventDate = event.date {
+                    if calendar.isDate(eventDate, inSameDayAs: date) {
+                        createEventDescriptor(for: event, on: date, appendingTo: &eventDescriptors)
+                    }
+                }
+            }
+        }
+        
+        // Sort descriptors by start time
+        eventDescriptors.sort { $0.dateInterval.start < $1.dateInterval.start }
+        
+        // Apply more aggressive normalization to prevent horizontal stacking
+        normalizeEventDescriptors(&eventDescriptors, tolerance: 60) // Use 60 seconds tolerance
+        
+        // Mark each event as "non-overlapping" by setting editedEvent
+        for descriptor in eventDescriptors {
+            if let event = descriptor as? Event {
+                event.editedEvent = event // This signals to CalendarKit that the event is in its final form
+            }
+        }
+        
+        for descriptor in eventDescriptors {
+            print("Event: \(descriptor.text) from \(descriptor.dateInterval.start) to \(descriptor.dateInterval.end)")
+        }
+        
+        return eventDescriptors
+    }
     
     private func createEventDescriptor(for event: CustomEvent, on date: Date, appendingTo eventDescriptors: inout [EventDescriptor]) {
         let eventDescriptor = Event()
@@ -171,7 +181,6 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             let midnight = Calendar.current.startOfDay(for: date)
             guard let nextMidnight = Calendar.current.date(byAdding: .day, value: 1, to: midnight) else { return }
             eventDescriptor.dateInterval = DateInterval(start: midnight, end: nextMidnight)
-//            eventDescriptor.backgroundColor = .systemBlue
             eventDescriptor.backgroundColor = UIColor(hex: "#C87501")
         } else {
             // Handle timed events
@@ -179,33 +188,52 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             let endTime: Date
             
             if let explicitEndTime = event.endTime {
-                endTime = explicitEndTime
+                endTime = explicitEndTime.addingTimeInterval(-3)
             } else {
                 let durationSeconds = Double(event.duration)
-                endTime = startTime.addingTimeInterval(durationSeconds)
+                endTime = startTime.addingTimeInterval(durationSeconds - 3)
             }
             
             eventDescriptor.dateInterval = DateInterval(start: startTime, end: endTime)
+            
+            // Force orange color for regular events
             eventDescriptor.backgroundColor = .systemOrange
         }
         
+        // Extra configurations to help prevent dots and ensure color
         eventDescriptor.textColor = .white
+        eventDescriptor.editedEvent = eventDescriptor
+        
+        // Try to disable resizing handles with userInfo if available
+        eventDescriptor.userInfo = ["hideHandles": true]
+        
         eventDescriptors.append(eventDescriptor)
     }
     
-    /// Adjusts the start times of event descriptors so that if one event's end is nearly equal to the next event's start (within the tolerance),
-    /// the next event's start time is snapped to the previous event's end time.
+    /// Adjusts the start/end times of event descriptors to prevent horizontal stacking
     private func normalizeEventDescriptors(_ descriptors: inout [EventDescriptor], tolerance: TimeInterval) {
         guard descriptors.count > 1 else { return }
+        let epsilon: TimeInterval = 5 // 5 seconds gap between events
+        
         for i in 1..<descriptors.count {
             let previous = descriptors[i - 1]
             let current = descriptors[i]
-            // If the gap between previous event's end and current event's start is less than tolerance,
-            // adjust current event's start to match previous event's end.
+            
+            // If previous event's end is nearly equal to current event's start...
             if previous.dateInterval.end.isApproximatelyEqual(to: current.dateInterval.start, tolerance: tolerance) {
-                let duration = current.dateInterval.end.timeIntervalSince(current.dateInterval.start)
-                let newStart = previous.dateInterval.end
-                let newEnd = newStart.addingTimeInterval(duration)
+                // Create a more significant gap between events
+                let adjustedPreviousEnd = previous.dateInterval.end.addingTimeInterval(-epsilon)
+                let currentDuration = current.dateInterval.end.timeIntervalSince(current.dateInterval.start)
+                
+                // Update the previous event's interval
+                previous.dateInterval = DateInterval(
+                    start: previous.dateInterval.start,
+                    end: adjustedPreviousEnd
+                )
+                
+                // Set the current event to start after the gap
+                let newStart = adjustedPreviousEnd.addingTimeInterval(epsilon)
+                let newEnd = newStart.addingTimeInterval(currentDuration)
                 current.dateInterval = DateInterval(start: newStart, end: newEnd)
             }
         }
@@ -249,8 +277,9 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                 // For regular events, match based on start/end times and title
                 if let eventStart = event.startTime ?? event.date,
                    let eventEnd = event.endTime {
-                    return selectedEventDescriptor.dateInterval.start == eventStart &&
-                           selectedEventDescriptor.dateInterval.end == eventEnd &&
+                    // Use approximate time matching since we've adjusted times slightly
+                    return eventStart.isApproximatelyEqual(to: selectedEventDescriptor.dateInterval.start, tolerance: 10) &&
+                           eventEnd.isApproximatelyEqual(to: selectedEventDescriptor.dateInterval.end, tolerance: 10) &&
                            selectedEventDescriptor.text.contains(event.title)
                 }
                 return false
@@ -267,13 +296,13 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         // Handle the event selection the same way as regular events
         dayViewDidSelectEventView(eventView)
     }
+    
+    
         
     private func showEventDetails(for event: CustomEvent) {
         let alert = UIAlertController(title: event.title, message: nil, preferredStyle: .alert)
         
         let dateFormatter = DateFormatter()
-//        dateFormatter.dateStyle = .medium
-//        dateFormatter.timeStyle = .short
         
         var details = [String]()
         
