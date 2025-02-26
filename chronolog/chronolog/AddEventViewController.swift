@@ -125,6 +125,7 @@ class AddEventViewController: UIViewController {
         addPrioritySegmentedControl(to: container)
         addAllDaySwitch(to: container)
         addDatePickers(to: container)
+        addDeadlineToggle(to: container)
         addDurationToggle(to: container, durationPickers: &durationPickers)
         addRecurrenceSelector(to: container, viewController: self)
         addAllowSplittingSwitch(to: container)
@@ -198,7 +199,7 @@ class AddEventViewController: UIViewController {
         startContainer.addArrangedSubview(startDatePicker)
         container.addArrangedSubview(startContainer)
         
-        // End Date Picker
+        // End Date Picker - same approach
         let endContainer = UIStackView()
         endContainer.axis = .horizontal
         endContainer.spacing = 10
@@ -318,6 +319,46 @@ class AddEventViewController: UIViewController {
         overlapSwitchContainer.addArrangedSubview(overlapSwitch)
         container.addArrangedSubview(overlapSwitchContainer)
     }
+    
+    //deadline
+    func addDeadlineToggle(to container: UIStackView) {
+        // Container for the deadline toggle
+        let deadlineToggleContainer = UIStackView()
+        deadlineToggleContainer.axis = .horizontal
+        deadlineToggleContainer.spacing = 10
+        
+        // Deadline label
+        let deadlineLabel = UILabel()
+        deadlineLabel.text = "Add Deadline"
+        deadlineLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        deadlineToggleContainer.addArrangedSubview(deadlineLabel)
+        
+        // Deadline toggle switch
+        let deadlineSwitch = UISwitch()
+        deadlineSwitch.isOn = false
+        deadlineSwitch.addTarget(self, action: #selector(deadlineSwitchToggled(_:)), for: .valueChanged)
+        deadlineToggleContainer.addArrangedSubview(deadlineSwitch)
+        container.addArrangedSubview(deadlineToggleContainer)
+        
+        // Add deadline picker (initially hidden)
+        let deadlineDateContainer = UIStackView()
+        deadlineDateContainer.axis = .horizontal
+        deadlineDateContainer.spacing = 10
+        deadlineDateContainer.isHidden = true
+        deadlineDateContainer.tag = 100 // Tag for easy retrieval
+        
+        let deadlineDateLabel = UILabel()
+        deadlineDateLabel.text = "Deadline"
+        deadlineDateLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        deadlineDateContainer.addArrangedSubview(deadlineDateLabel)
+        
+        let deadlineDatePicker = UIDatePicker()
+        deadlineDatePicker.datePickerMode = .dateAndTime
+        deadlineDatePicker.minimumDate = Date() // Default to current date
+        deadlineDateContainer.addArrangedSubview(deadlineDatePicker)
+        
+        container.addArrangedSubview(deadlineDateContainer)
+    }
 
     // MARK: - Event Handlers
     @objc func allDaySwitchToggled(_ sender: UISwitch) {
@@ -399,6 +440,19 @@ class AddEventViewController: UIViewController {
         guard let container = sender.superview?.superview as? UIStackView,
               let picker = durationPickers[container] else { return }
         
+        // Find deadline switch to check its state
+        let deadlineContainer = container.arrangedSubviews
+            .compactMap { $0 as? UIStackView }
+            .first(where: { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add Deadline" } })
+        let deadlineSwitch = deadlineContainer?.arrangedSubviews.compactMap { $0 as? UISwitch }.first
+        let isDeadlineEnabled = deadlineSwitch?.isOn ?? false
+            
+        // If deadline is enabled, don't allow turning off duration
+        if isDeadlineEnabled && !sender.isOn {
+            sender.setOn(true, animated: true)
+            return
+        }
+            
         picker.isHidden = !sender.isOn
 
         if sender.isOn {
@@ -476,6 +530,74 @@ class AddEventViewController: UIViewController {
         return nil
     }
     
+    @objc func deadlineSwitchToggled(_ sender: UISwitch) {
+        guard let container = sender.superview?.superview as? UIStackView,
+                let deadlineDateContainer = container.arrangedSubviews.first(where: { $0.tag == 100 }) else {
+            return
+        }
+            
+        // Show/hide the deadline date picker
+        deadlineDateContainer.isHidden = !sender.isOn
+            
+        // Find start and end time pickers
+        let startDatePicker = findDatePicker(in: container, withLabel: "Starts")
+        let endDatePicker = findDatePicker(in: container, withLabel: "Ends")
+            
+        // Find duration switch
+        let durationContainer = container.arrangedSubviews
+            .compactMap { $0 as? UIStackView }
+            .first(where: { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add Duration" } })
+        let durationSwitch = durationContainer?.arrangedSubviews.compactMap { $0 as? UISwitch }.first
+            
+        // Enable/disable date pickers based on deadline toggle
+        startDatePicker?.isEnabled = !sender.isOn
+        endDatePicker?.isEnabled = !sender.isOn
+            
+        // If deadline is enabled, also enable duration
+        if sender.isOn && durationSwitch?.isOn == false {
+            durationSwitch?.setOn(true, animated: true)
+            durationSwitchToggled(durationSwitch!) // Trigger the duration switch handler
+        }
+        
+        if sender.isOn {
+            // Force layout update for scrolling
+            container.layoutIfNeeded()
+            
+            // Find the scroll view by traversing up the view hierarchy
+            var currentView = container as UIView
+            var scrollView: UIScrollView?
+            
+            while currentView.superview != nil {
+                if let foundScrollView = currentView.superview as? UIScrollView {
+                    scrollView = foundScrollView
+                    break
+                }
+                currentView = currentView.superview!
+            }
+            
+            // Scroll to make the deadline picker visible
+            if let scrollView = scrollView {
+                scrollView.layoutIfNeeded()
+                
+                // Convert container's frame to scroll view's coordinate space
+                let containerRect = container.convert(container.bounds, to: scrollView)
+                let bottomOfContainer = containerRect.maxY
+                
+                // Calculate new offset
+                let newOffset = bottomOfContainer - scrollView.bounds.height + 100 // Add padding
+                if newOffset > scrollView.contentOffset.y {
+                    DispatchQueue.main.async {
+                        scrollView.setContentOffset(CGPoint(x: 0, y: newOffset), animated: true)
+                    }
+                }
+            }
+        } else {
+            // If deadline is disabled, re-enable the date pickers
+            startDatePicker?.isEnabled = true
+            endDatePicker?.isEnabled = true
+        }
+    }
+    
     // MARK: - Helper to Build Custom Event
     /// Builds a new CustomEvent from the input fields.
     /// If required fields are missing, it animates the title field and shows an alert.
@@ -509,6 +631,19 @@ class AddEventViewController: UIViewController {
         let startDatePicker = findDatePicker(in: container, withLabel: "Starts")
         let endDatePicker = findDatePicker(in: container, withLabel: "Ends")
         
+        // Check if deadline is enabled
+        let deadlineSwitch = container.arrangedSubviews
+            .compactMap { $0 as? UIStackView }
+            .first(where: { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add Deadline" } })?
+            .arrangedSubviews.compactMap { $0 as? UISwitch }.first
+            
+        let hasDeadline = deadlineSwitch?.isOn ?? false
+            
+        // Get deadline date if enabled
+        let deadlineContainer = container.arrangedSubviews.first(where: { $0.tag == 100 }) as? UIStackView
+        let deadlineDate = hasDeadline ?
+            (deadlineContainer?.arrangedSubviews.last as? UIDatePicker)?.date : nil
+        
         // Get optional switches and note field.
         let allDaySwitch = container.arrangedSubviews
             .compactMap { $0 as? UIStackView }
@@ -540,17 +675,30 @@ class AddEventViewController: UIViewController {
             .arrangedSubviews.compactMap { $0 as? UISegmentedControl }.first
         
         // Ensure required fields exist.
-        guard let title = titleField.text, !title.isEmpty,
-              let startDate = startDatePicker?.date,
-              let endDate = endDatePicker?.date
-        else {
+        guard let title = titleField.text, !title.isEmpty else {
             return nil
         }
-        
+            
+        // Get start and end dates (may be nil if deadline is enabled)
+        let startDate = hasDeadline ? nil : startDatePicker?.date
+        let endDate = hasDeadline ? nil : endDatePicker?.date
+            
         let isAllDay = allDaySwitch?.isOn ?? false
         let allowSplit = allowSplitSwitch?.isOn ?? false
         let allowOverlap = allowOverlapSwitch?.isOn ?? false
-        let duration = (durationPicker?.isHidden == false) ? Int(durationPicker?.countDownDuration ?? 0) : Int(endDate.timeIntervalSince(startDate))
+            
+        // Calculate duration based on whether deadline is enabled
+        let duration: Int
+        if hasDeadline {
+            // Use duration picker value when deadline is enabled
+            duration = Int(durationPicker?.countDownDuration ?? 0)
+        } else if let start = startDate, let end = endDate {
+            // Calculate duration from start/end times if no deadline
+            duration = Int(end.timeIntervalSince(start))
+        } else {
+            duration = 0
+        }
+        
         let descriptionText = noteField?.text ?? ""
         
         let priority: CustomEvent.Priority = {
@@ -575,7 +723,8 @@ class AddEventViewController: UIViewController {
             isAllDay: isAllDay,
             allowSplit: allowSplit,
             allowOverlap: allowOverlap,
-            priority: priority
+            priority: priority,
+            deadline: deadlineDate
         )
         return customEvent
     }
@@ -609,6 +758,7 @@ class AddEventViewController: UIViewController {
                 let isAllDay = data["isAllDay"] as? Bool ?? false
                 let allowSplit = data["allowSplit"] as? Bool ?? false
                 let allowOverlap = data["allowOverlap"] as? Bool ?? false
+                let deadlineTimestamp = data["deadline"] as? Timestamp
                 
                 // Convert priority string to enum.
                 let priorityString = data["priority"] as? String ?? "medium"
@@ -625,6 +775,7 @@ class AddEventViewController: UIViewController {
                 let endTime = endTimestamp?.dateValue()
                 let date = dateTimestamp?.dateValue()
                 let description = data["description"] as? String ?? ""
+                let deadline = deadlineTimestamp?.dateValue()
                 
                 let event = CustomEvent(
                     title: title,
@@ -638,7 +789,8 @@ class AddEventViewController: UIViewController {
                     isAllDay: isAllDay,
                     allowSplit: allowSplit,
                     allowOverlap: allowOverlap,
-                    priority: priority
+                    priority: priority,
+                    deadline: deadline
                 )
                 events.append(event)
                 
@@ -791,7 +943,8 @@ class AddEventViewController: UIViewController {
             "isAllDay": newEvent.isAllDay,
             "allowSplit": newEvent.allowSplit,
             "allowOverlap": newEvent.allowOverlap,
-            "priority": newEvent.priority.rawValue
+            "priority": newEvent.priority.rawValue,
+            "deadline": newEvent.deadline ?? Date()
         ]
         
         let priorityString: String = {
@@ -812,13 +965,23 @@ class AddEventViewController: UIViewController {
                     self.showAlert(title: "Error", message: "Failed to save event. Please try again.")
                 } else {
                     print("Event saved successfully")
-                    //create notification
-                    self.saveEventAndScheduleNotification(
-                        title: newEvent.title,
-                        startTime: newEvent.startTime ?? Date(),
-                        isAllDay: newEvent.isAllDay,
-                        priority: priorityString
-                    )
+                    // Create notification
+                    if let startTime = newEvent.startTime {
+                        self.saveEventAndScheduleNotification(
+                            title: newEvent.title,
+                            startTime: startTime,
+                            isAllDay: newEvent.isAllDay,
+                            priority: priorityString
+                        )
+                    } else if let deadline = newEvent.deadline {
+                        // If using deadline instead of start time, schedule notification for the deadline
+                        self.saveEventAndScheduleNotification(
+                            title: "Deadline: \(newEvent.title)",
+                            startTime: deadline,
+                            isAllDay: false,
+                            priority: priorityString
+                        )
+                    }
                     self.resetForm()
                     self.promptToAddAnotherEvent()
                 }
@@ -945,6 +1108,28 @@ class AddEventViewController: UIViewController {
             }
         }
         
+        //reset deadline
+        if let deadlineContainer = container.arrangedSubviews.first(where: { ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Add Deadline" }) == true }) as? UIStackView,
+           let deadlineSwitch = deadlineContainer.arrangedSubviews.first(where: { $0 is UISwitch }) as? UISwitch {
+            deadlineSwitch.isOn = false
+            
+            // Find the deadline date container using the tag
+            if let deadlineDateContainer = container.arrangedSubviews.first(where: { $0.tag == 100 }) as? UIStackView {
+                deadlineDateContainer.isHidden = true
+                
+                if let deadlineDatePicker = deadlineDateContainer.arrangedSubviews.last as? UIDatePicker {
+                    deadlineDatePicker.setDate(Date(), animated: false)
+                }
+            }
+            
+            // Re-enable date pickers that might have been disabled
+            if let startDatePicker = findDatePicker(in: container, withLabel: "Starts"),
+               let endDatePicker = findDatePicker(in: container, withLabel: "Ends") {
+                startDatePicker.isEnabled = true
+                endDatePicker.isEnabled = true
+            }
+        }
+        
         // Reset duration switch and picker
         if let durationContainer = container.arrangedSubviews.first(where: { ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Add Duration" }) == true }) as? UIStackView,
            let durationSwitch = durationContainer.arrangedSubviews.first(where: { $0 is UISwitch }) as? UISwitch {
@@ -982,9 +1167,6 @@ class AddEventViewController: UIViewController {
         
         print("Form reset completed successfully")
     }
-
-
-
 
 
     func promptToAddAnotherEvent() {

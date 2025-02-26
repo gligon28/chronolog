@@ -26,6 +26,7 @@ struct CustomEvent {
     var allowSplit: Bool
     var allowOverlap: Bool
     var priority: Priority
+    var deadline: Date?
     
 }
 
@@ -44,6 +45,7 @@ extension CustomEvent: Codable {
         case allowSplit = "isSplitable"
         case allowOverlap
         case priority
+        case deadline
     }
     
     func encode(to encoder: Encoder) throws {
@@ -61,6 +63,7 @@ extension CustomEvent: Codable {
         try container.encode(allowSplit, forKey: .allowSplit)
         try container.encode(allowOverlap, forKey: .allowOverlap)
         try container.encode(priority.rawValue, forKey: .priority)
+        try container.encodeIfPresent(deadline, forKey: .deadline)
     }
     
     init(from decoder: Decoder) throws {
@@ -77,6 +80,7 @@ extension CustomEvent: Codable {
         isAllDay = try container.decode(Bool.self, forKey: .isAllDay)
         allowSplit = try container.decode(Bool.self, forKey: .allowSplit)
         allowOverlap = try container.decode(Bool.self, forKey: .allowOverlap)
+        deadline = try container.decodeIfPresent(Date.self, forKey: .deadline)
         
         let priorityString = try container.decode(String.self, forKey: .priority)
         priority = Priority(rawValue: priorityString) ?? .low
