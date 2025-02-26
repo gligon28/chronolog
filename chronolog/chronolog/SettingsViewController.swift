@@ -1,23 +1,27 @@
 //
-//  GetToKnowViewController.swift
+//  SettingsViewController.swift
 //  chronolog
 //
-//  Created by gg ligon on 10/7/24.
+//  Created by gg ligon on 10/30/24.
 //
 
 import UIKit
 import FirebaseAuth
 
-class GetToKnowViewController: UIViewController {
+class SettingsViewController: UIViewController {
 
-    @IBOutlet weak var lblWelcome: UILabel!
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        // Do any additional setup after loading the view.
+    }
     
     @IBAction func btnSignOut(_ sender: UIButton) {
         do {
             try Auth.auth().signOut()
             activeUser = nil
             // Navigate back to login screen
-            self.performSegue(withIdentifier: "goToLogin", sender: self)
+            self.performSegue(withIdentifier: "goToLogin3", sender: self)
         } catch let error {
             print("Error signing out: \(error.localizedDescription)")
             // Show error alert
@@ -29,21 +33,6 @@ class GetToKnowViewController: UIViewController {
             alert.addAction(UIAlertAction(title: "OK", style: .default))
             self.present(alert, animated: true)
         }
-    }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
-        lblWelcome.isHidden = true
-        
-        // Set the label text using the activeUsername variable
-        if let username = activeUser {
-            lblWelcome.text = "Let's Get To Know You, \(username)"
-        } else {
-            lblWelcome.text = "Let's Get To Know You"
-        }
-        
-        lblWelcome.isHidden = false
     }
     
 }

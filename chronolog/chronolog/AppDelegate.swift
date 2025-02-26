@@ -9,16 +9,20 @@ import UIKit
 import FirebaseCore
 import Firebase
 import FirebaseFirestore
+import FirebaseAppCheck
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-
+    var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Set up Firebase App Check with debug provider
+        let providerFactory = AppCheckDebugProviderFactory()
+        AppCheck.setAppCheckProviderFactory(providerFactory)
+
+        // Configure Firebase
         FirebaseApp.configure()
-        let db = Firestore.firestore()  // Initializes Firestore
         return true
     }
 
