@@ -37,7 +37,7 @@ class ProgressTrackingViewController: UIViewController, UITableViewDelegate, UIT
     
     private func setupUI() {
         // Set title for navigation bar
-        title = "Progress Tracking"
+        title = "Tasks"
 
         
         // Create table view

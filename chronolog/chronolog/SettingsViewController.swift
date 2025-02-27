@@ -49,9 +49,9 @@ class SettingsViewController: UITableViewController {
         if indexPath.section == 0 {
             switch indexPath.row {
             case 0:
-                cell.textLabel?.text = "Progress Tracking"
+                cell.textLabel?.text = "Tasks"
             case 1:
-                cell.textLabel?.text = "Other Feature"
+                cell.textLabel?.text = "Progress Tracking"
             case 2:
                 cell.textLabel?.text = "Another Feature"
             default:
