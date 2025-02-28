@@ -439,19 +439,6 @@ class AddEventViewController: UIViewController {
     @objc func durationSwitchToggled(_ sender: UISwitch) {
         guard let container = sender.superview?.superview as? UIStackView,
               let picker = durationPickers[container] else { return }
-        
-        // Find deadline switch to check its state
-        let deadlineContainer = container.arrangedSubviews
-            .compactMap { $0 as? UIStackView }
-            .first(where: { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add Deadline" } })
-        let deadlineSwitch = deadlineContainer?.arrangedSubviews.compactMap { $0 as? UISwitch }.first
-        let isDeadlineEnabled = deadlineSwitch?.isOn ?? false
-            
-        // If deadline is enabled, don't allow turning off duration
-        if isDeadlineEnabled && !sender.isOn {
-            sender.setOn(true, animated: true)
-            return
-        }
             
         picker.isHidden = !sender.isOn
 
@@ -538,26 +525,6 @@ class AddEventViewController: UIViewController {
             
         // Show/hide the deadline date picker
         deadlineDateContainer.isHidden = !sender.isOn
-            
-        // Find start and end time pickers
-        let startDatePicker = findDatePicker(in: container, withLabel: "Starts")
-        let endDatePicker = findDatePicker(in: container, withLabel: "Ends")
-            
-        // Find duration switch
-        let durationContainer = container.arrangedSubviews
-            .compactMap { $0 as? UIStackView }
-            .first(where: { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add Duration" } })
-        let durationSwitch = durationContainer?.arrangedSubviews.compactMap { $0 as? UISwitch }.first
-            
-        // Enable/disable date pickers based on deadline toggle
-        startDatePicker?.isEnabled = !sender.isOn
-        endDatePicker?.isEnabled = !sender.isOn
-            
-        // If deadline is enabled, also enable duration
-        if sender.isOn && durationSwitch?.isOn == false {
-            durationSwitch?.setOn(true, animated: true)
-            durationSwitchToggled(durationSwitch!) // Trigger the duration switch handler
-        }
         
         if sender.isOn {
             // Force layout update for scrolling
@@ -591,10 +558,6 @@ class AddEventViewController: UIViewController {
                     }
                 }
             }
-        } else {
-            // If deadline is disabled, re-enable the date pickers
-            startDatePicker?.isEnabled = true
-            endDatePicker?.isEnabled = true
         }
     }
     
@@ -675,29 +638,18 @@ class AddEventViewController: UIViewController {
             .arrangedSubviews.compactMap { $0 as? UISegmentedControl }.first
         
         // Ensure required fields exist.
-        guard let title = titleField.text, !title.isEmpty else {
+        guard let title = titleField.text, !title.isEmpty,
+            let startDate = startDatePicker?.date,
+            let endDate = endDatePicker?.date
+        else {
             return nil
         }
-            
-        // Get start and end dates (may be nil if deadline is enabled)
-        let startDate = hasDeadline ? nil : startDatePicker?.date
-        let endDate = hasDeadline ? nil : endDatePicker?.date
             
         let isAllDay = allDaySwitch?.isOn ?? false
         let allowSplit = allowSplitSwitch?.isOn ?? false
         let allowOverlap = allowOverlapSwitch?.isOn ?? false
             
-        // Calculate duration based on whether deadline is enabled
-        let duration: Int
-        if hasDeadline {
-            // Use duration picker value when deadline is enabled
-            duration = Int(durationPicker?.countDownDuration ?? 0)
-        } else if let start = startDate, let end = endDate {
-            // Calculate duration from start/end times if no deadline
-            duration = Int(end.timeIntervalSince(start))
-        } else {
-            duration = 0
-        }
+        let duration = (durationPicker?.isHidden == false) ? Int(durationPicker?.countDownDuration ?? 0) : Int(endDate.timeIntervalSince(startDate))
         
         let descriptionText = noteField?.text ?? ""
         
@@ -874,9 +826,6 @@ class AddEventViewController: UIViewController {
         }
     }
 
-
-
-
     
     func hasConflict(newEvent: CustomEvent, existingEvents: [CustomEvent]) -> Bool {
         guard let newStart = newEvent.startTime, let newEnd = newEvent.endTime else {
@@ -965,23 +914,13 @@ class AddEventViewController: UIViewController {
                     self.showAlert(title: "Error", message: "Failed to save event. Please try again.")
                 } else {
                     print("Event saved successfully")
-                    // Create notification
-                    if let startTime = newEvent.startTime {
-                        self.saveEventAndScheduleNotification(
-                            title: newEvent.title,
-                            startTime: startTime,
-                            isAllDay: newEvent.isAllDay,
-                            priority: priorityString
-                        )
-                    } else if let deadline = newEvent.deadline {
-                        // If using deadline instead of start time, schedule notification for the deadline
-                        self.saveEventAndScheduleNotification(
-                            title: "Deadline: \(newEvent.title)",
-                            startTime: deadline,
-                            isAllDay: false,
-                            priority: priorityString
-                        )
-                    }
+                    //create notification
+                    self.saveEventAndScheduleNotification(
+                        title: newEvent.title,
+                        startTime: newEvent.startTime ?? Date(),
+                        isAllDay: newEvent.isAllDay,
+                        priority: priorityString
+                    )
                     self.resetForm()
                     self.promptToAddAnotherEvent()
                 }
@@ -1120,13 +1059,6 @@ class AddEventViewController: UIViewController {
                 if let deadlineDatePicker = deadlineDateContainer.arrangedSubviews.last as? UIDatePicker {
                     deadlineDatePicker.setDate(Date(), animated: false)
                 }
-            }
-            
-            // Re-enable date pickers that might have been disabled
-            if let startDatePicker = findDatePicker(in: container, withLabel: "Starts"),
-               let endDatePicker = findDatePicker(in: container, withLabel: "Ends") {
-                startDatePicker.isEnabled = true
-                endDatePicker.isEnabled = true
             }
         }
         
