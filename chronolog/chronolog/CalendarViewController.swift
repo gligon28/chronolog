@@ -19,8 +19,19 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // Add an observer to modify event views after they're created
+        NotificationCenter.default.addObserver(self, selector: #selector(hideHandlesInEventViews), name: UIApplication.didBecomeActiveNotification, object: nil)
+            
+        // Also call it immediately
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.hideHandlesInEventViews()
+        }
+        
         title = "Calendar"
         self.tabBarController?.delegate = self
+        
+        dayView.autoScrollToFirstEvent = true
         
         // Configure navigation bar appearance
         if let navigationController = navigationController {
@@ -50,6 +61,11 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        hideHandlesInEventViews()
+    }
+    
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
@@ -59,6 +75,44 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             self?.reloadData()
         }
     }
+    
+    @objc func hideHandlesInEventViews() {
+        // Find event views in the hierarchy
+        findEventViews(in: dayView)
+    }
+
+    func findEventViews(in view: UIView) {
+        // Look for EventView class or something containing "handle" in subviews
+        for subview in view.subviews {
+            if String(describing: type(of: subview)).contains("EventView") {
+                hideHandles(in: subview)
+            } else if String(describing: type(of: subview)).contains("Handle") {
+                subview.isHidden = true
+            }
+            // Recursively check subviews
+            findEventViews(in: subview)
+        }
+    }
+
+    func hideHandles(in eventView: UIView) {
+        // Look for handle-like views (circles or small views at the edges)
+        for subview in eventView.subviews {
+            let className = String(describing: type(of: subview))
+            
+            // Look for potential handle views
+            if className.contains("Handle") ||
+               (subview.frame.width < 20 && subview.frame.height < 20) ||
+               subview is UIControl {
+                print("Hiding potential handle: \(subview)")
+                subview.isHidden = true
+            }
+        }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
     
     func fetchEvents(completion: @escaping ([CustomEvent]) -> Void) {
         guard let userID = userID else {
@@ -88,6 +142,7 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                 let isAllDay = data["isAllDay"] as? Bool ?? false
                 let allowSplit = data["allowSplit"] as? Bool ?? false
                 let allowOverlap = data["allowOverlap"] as? Bool ?? false
+                let deadlineTimestamp = data["deadline"] as? Timestamp
                 
                 // Handle priority conversion
                 let priorityString = data["priority"] as? String ?? "medium"
@@ -101,6 +156,7 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                 
                 let startTime = startTimestamp?.dateValue()
                 let endTime = endTimestamp?.dateValue()
+                let deadline = deadlineTimestamp?.dateValue()
                 let date = dateTimestamp?.dateValue()
                 let description = data["description"] as? String ?? ""
                 
@@ -116,7 +172,8 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                     isAllDay: isAllDay,
                     allowSplit: allowSplit,
                     allowOverlap: allowOverlap,
-                    priority: priority
+                    priority: priority,
+                    deadline: deadline
                 )
                 events.append(event)
                 
@@ -203,9 +260,7 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         // Extra configurations to help prevent dots and ensure color
         eventDescriptor.textColor = .white
         eventDescriptor.editedEvent = eventDescriptor
-        
-        // Try to disable resizing handles with userInfo if available
-        eventDescriptor.userInfo = ["hideHandles": true]
+
         
         eventDescriptors.append(eventDescriptor)
     }
@@ -336,7 +391,11 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                 }
             }
         }
-            
+        
+        if let deadline = event.deadline {
+            details.append("Deadline: \(dateFormatter.string(from: deadline))")
+        }
+        
         details.append("Priority: \(event.priority.rawValue.capitalized)")
         
         // Add notes without duplicating them
