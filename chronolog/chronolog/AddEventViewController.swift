@@ -599,13 +599,12 @@ class AddEventViewController: UIViewController {
             .compactMap { $0 as? UIStackView }
             .first(where: { stack in stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add Deadline" } })?
             .arrangedSubviews.compactMap { $0 as? UISwitch }.first
-            
+                
         let hasDeadline = deadlineSwitch?.isOn ?? false
-            
-        // Get deadline date if enabled
+                
+        // Get deadline date ONLY if enabled
         let deadlineContainer = container.arrangedSubviews.first(where: { $0.tag == 100 }) as? UIStackView
-        let deadlineDate = hasDeadline ?
-            (deadlineContainer?.arrangedSubviews.last as? UIDatePicker)?.date : nil
+        let deadlineDate = hasDeadline ? (deadlineContainer?.arrangedSubviews.last as? UIDatePicker)?.date : nil
         
         // Get optional switches and note field.
         let allDaySwitch = container.arrangedSubviews
@@ -893,7 +892,7 @@ class AddEventViewController: UIViewController {
             "allowSplit": newEvent.allowSplit,
             "allowOverlap": newEvent.allowOverlap,
             "priority": newEvent.priority.rawValue,
-            "deadline": newEvent.deadline ?? Date()
+            "deadline": newEvent.deadline
         ]
         
         let priorityString: String = {

@@ -75,7 +75,7 @@ class SettingsViewController: UITableViewController {
             switch indexPath.row {
             case 0:
                 // Progress Tracking
-                if let progressVC = storyboard?.instantiateViewController(withIdentifier: "ProgressTrackingViewController") as? ProgressTrackingViewController {
+                if let progressVC = storyboard?.instantiateViewController(withIdentifier: "DeadlineTrackingViewController") as? DeadlineTrackingViewController {
                     navigationController?.pushViewController(progressVC, animated: true)
                 }
             case 1:
@@ -133,8 +133,8 @@ class SettingsViewController: UITableViewController {
         
         // MARK: - Navigation
         
-        func navigateToProgressTracking() {
-            if let progressVC = self.storyboard?.instantiateViewController(withIdentifier: "ProgressTrackingViewController") {
+        func navigateToDeadlineTracking() {
+            if let progressVC = self.storyboard?.instantiateViewController(withIdentifier: "DeadlineTrackingViewController") {
                 // For navigation controller push
                 if let navController = self.navigationController {
                     print("Using navigation controller to push")

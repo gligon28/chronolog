@@ -40,7 +40,7 @@
 		50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */; };
 		508A253C2CAB4D0F00488B39 /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508A253B2CAB4D0F00488B39 /* HomeViewController.swift */; };
 		50C5475C2D6F53FD00E8996A /* UserNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C5475B2D6F53FD00E8996A /* UserNotification.swift */; };
-		50C5475E2D6F72DB00E8996A /* ProgressTrackingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C5475D2D6F72DB00E8996A /* ProgressTrackingViewController.swift */; };
+		50CCB6752D7690DD004D5ACD /* DeadlineTrackingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CCB6742D7690DD004D5ACD /* DeadlineTrackingViewController.swift */; };
 		D19523A92C9F871900762B0D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19523A82C9F871900762B0D /* AppDelegate.swift */; };
 		D19523AB2C9F871900762B0D /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19523AA2C9F871900762B0D /* SceneDelegate.swift */; };
 		D19523AD2C9F871900762B0D /* LoginViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D19523AC2C9F871900762B0D /* LoginViewController.swift */; };
@@ -65,7 +65,7 @@
 		50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEvent.swift; sourceTree = "<group>"; };
 		508A253B2CAB4D0F00488B39 /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
 		50C5475B2D6F53FD00E8996A /* UserNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserNotification.swift; sourceTree = "<group>"; };
-		50C5475D2D6F72DB00E8996A /* ProgressTrackingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressTrackingViewController.swift; sourceTree = "<group>"; };
+		50CCB6742D7690DD004D5ACD /* DeadlineTrackingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeadlineTrackingViewController.swift; sourceTree = "<group>"; };
 		D19523A52C9F871900762B0D /* chronolog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = chronolog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D19523A82C9F871900762B0D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D19523AA2C9F871900762B0D /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -144,7 +144,6 @@
 				D19523AC2C9F871900762B0D /* LoginViewController.swift */,
 				D1A345532C9F9864005B1F44 /* CreateAccountViewController.swift */,
 				D19523AE2C9F871900762B0D /* Main.storyboard */,
-				50C5475D2D6F72DB00E8996A /* ProgressTrackingViewController.swift */,
 				5054B33D2CA1110A0020F9C3 /* QuestionsViewController.swift */,
 				D1A345602CA0DF4F005B1F44 /* ChecklistViewController.swift */,
 				D19523B12C9F871A00762B0D /* Assets.xcassets */,
@@ -159,6 +158,7 @@
 				50C5475B2D6F53FD00E8996A /* UserNotification.swift */,
 				5011DA912D7130CC00BC2875 /* Config.plist */,
 				5011DA932D7130F300BC2875 /* Config.plist */,
+				50CCB6742D7690DD004D5ACD /* DeadlineTrackingViewController.swift */,
 			);
 			path = chronolog;
 			sourceTree = "<group>";
@@ -269,11 +269,11 @@
 			files = (
 				50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */,
 				505E35952CC18ACF0060CA2E /* AddEventViewController.swift in Sources */,
+				50CCB6752D7690DD004D5ACD /* DeadlineTrackingViewController.swift in Sources */,
 				50C5475C2D6F53FD00E8996A /* UserNotification.swift in Sources */,
 				50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */,
 				D1A345542C9F9864005B1F44 /* CreateAccountViewController.swift in Sources */,
 				5054B33E2CA1110A0020F9C3 /* QuestionsViewController.swift in Sources */,
-				50C5475E2D6F72DB00E8996A /* ProgressTrackingViewController.swift in Sources */,
 				D1A345612CA0DF4F005B1F44 /* ChecklistViewController.swift in Sources */,
 				D1FCDA262CB42C780061EAA9 /* GetToKnowViewController.swift in Sources */,
 				508A253C2CAB4D0F00488B39 /* HomeViewController.swift in Sources */,

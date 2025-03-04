@@ -406,10 +406,10 @@
             </objects>
             <point key="canvasLocation" x="6930.5343511450383" y="973.94366197183103"/>
         </scene>
-        <!--Progress Tracking View Controller-->
+        <!--Deadline Tracking View Controller-->
         <scene sceneID="ur0-Jf-CYl">
             <objects>
-                <viewController storyboardIdentifier="ProgressTrackingViewController" id="hBq-DK-F8b" customClass="ProgressTrackingViewController" customModule="chronolog" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="DeadlineTrackingViewController" id="hBq-DK-F8b" customClass="DeadlineTrackingViewController" customModule="chronolog" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="m8x-TE-3AY">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
