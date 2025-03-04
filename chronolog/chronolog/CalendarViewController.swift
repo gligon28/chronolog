@@ -242,13 +242,26 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         } else {
             // Handle timed events
             guard let startTime = event.startTime ?? event.date else { return }
-            let endTime: Date
+            var endTime: Date
             
             if let explicitEndTime = event.endTime {
-                endTime = explicitEndTime.addingTimeInterval(-3)
+                // For display purposes only: ensure minimum visual duration
+                if startTime.isApproximatelyEqual(to: explicitEndTime, tolerance: 1) {
+                    // If start and end times are the same, add a small duration (15 minutes)
+                    // just for the visual display in CalendarKit
+                    endTime = startTime.addingTimeInterval(15 * 60)
+                } else {
+                    endTime = explicitEndTime.addingTimeInterval(-3)
+                }
             } else {
+                // If no explicit end time, use duration or default to 15 minutes
                 let durationSeconds = Double(event.duration)
-                endTime = startTime.addingTimeInterval(durationSeconds - 3)
+                if durationSeconds <= 0 {
+                    // Apply a minimum duration for display if duration is zero
+                    endTime = startTime.addingTimeInterval(15 * 60 - 3)
+                } else {
+                    endTime = startTime.addingTimeInterval(durationSeconds - 3)
+                }
             }
             
             eventDescriptor.dateInterval = DateInterval(start: startTime, end: endTime)
@@ -260,7 +273,6 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         // Extra configurations to help prevent dots and ensure color
         eventDescriptor.textColor = .white
         eventDescriptor.editedEvent = eventDescriptor
-
         
         eventDescriptors.append(eventDescriptor)
     }
@@ -318,8 +330,7 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         guard let selectedEventDescriptor = eventView.descriptor as? Event else {
             return
         }
-        
-        // Modified matching logic to handle both all-day and regular events
+    
         let matchingEvent = customEvents.first { event in
             if event.isAllDay {
                 // For all-day events, match based on date and title
@@ -329,12 +340,10 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                 }
                 return false
             } else {
-                // For regular events, match based on start/end times and title
-                if let eventStart = event.startTime ?? event.date,
-                   let eventEnd = event.endTime {
-                    // Use approximate time matching since we've adjusted times slightly
+                // For regular events, match based on start time and title
+                // We prioritize matching the start time since end times may have been adjusted for display
+                if let eventStart = event.startTime ?? event.date {
                     return eventStart.isApproximatelyEqual(to: selectedEventDescriptor.dateInterval.start, tolerance: 10) &&
-                           eventEnd.isApproximatelyEqual(to: selectedEventDescriptor.dateInterval.end, tolerance: 10) &&
                            selectedEventDescriptor.text.contains(event.title)
                 }
                 return false
@@ -345,7 +354,7 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
             showEventDetails(for: event)
         }
     }
-
+    
     // Add handler for all-day events specifically
     override func dayViewDidLongPressEventView(_ eventView: EventView) {
         // Handle the event selection the same way as regular events
