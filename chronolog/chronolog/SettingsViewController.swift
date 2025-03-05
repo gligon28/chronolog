@@ -53,7 +53,7 @@ class SettingsViewController: UITableViewController {
             case 1:
                 cell.textLabel?.text = "Progress Tracking"
             case 2:
-                cell.textLabel?.text = "Another Feature"
+                cell.textLabel?.text = "Talking Clock"
             default:
                 cell.textLabel?.text = "Feature"
             }

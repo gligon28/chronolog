@@ -45,6 +45,16 @@ class LoginViewController: UIViewController {
                 }
             }
     
+    // 1) New IBAction for test credentials
+    @IBAction func btnTestLogin(_ sender: UIButton) {
+        // Fill out fields with test credentials
+        txtEmail.text = "gligon@yahoo.com"
+        txtPassword.text = "pass12"
+        
+        // Optionally call btnLogin automatically:
+         self.btnLogin(sender)
+    }
+    
     func clearFirebaseCache() {
         // Sign out the user to clear any session-related data
         do {

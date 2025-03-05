@@ -409,14 +409,30 @@ class AddEventViewController: UIViewController {
             .first
         let durationPicker = durationPickers[container]
 
+        // Existing logic for duration constraints
         if let startDatePicker = startDatePicker, let durationPicker = durationPicker, !durationPicker.isHidden {
-            // Ensure end date accounts for start date + duration
             let requiredEndDate = startDatePicker.date.addingTimeInterval(durationPicker.countDownDuration)
             if sender.date < requiredEndDate {
                 sender.date = requiredEndDate
             }
         }
+
+        // NEW LOGIC: If deadline is toggled on, set its picker to this new end date.
+        if let deadlineSwitchContainer = container.arrangedSubviews.first(where: {
+            ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Add Deadline" }) == true
+        }) as? UIStackView,
+           let deadlineSwitch = deadlineSwitchContainer.arrangedSubviews.compactMap({ $0 as? UISwitch }).first,
+           let deadlineDateContainer = container.arrangedSubviews.first(where: { $0.tag == 100 }) as? UIStackView,
+           let deadlineDatePicker = deadlineDateContainer.arrangedSubviews.last as? UIDatePicker
+        {
+            if deadlineSwitch.isOn {
+                // Ensure the deadline can’t be before the end date:
+                deadlineDatePicker.minimumDate = sender.date
+                deadlineDatePicker.setDate(sender.date, animated: true)
+            }
+        }
     }
+
 
 
     @objc func durationPickerChanged(_ sender: UIDatePicker) {
@@ -519,18 +535,30 @@ class AddEventViewController: UIViewController {
     
     @objc func deadlineSwitchToggled(_ sender: UISwitch) {
         guard let container = sender.superview?.superview as? UIStackView,
-                let deadlineDateContainer = container.arrangedSubviews.first(where: { $0.tag == 100 }) else {
+              let deadlineDateContainer = container.arrangedSubviews.first(where: { $0.tag == 100 }) as? UIStackView else {
             return
         }
             
-        // Show/hide the deadline date picker
+        // Show/hide the deadline date picker container
         deadlineDateContainer.isHidden = !sender.isOn
         
         if sender.isOn {
-            // Force layout update for scrolling
+            // 1) Find the event's end date
+            if let endDatePicker = findDatePicker(in: container, withLabel: "Ends"),
+               let deadlineDatePicker = deadlineDateContainer.arrangedSubviews.last as? UIDatePicker {
+                
+                // 2) Initialize the deadline picker to the event's end time
+                let endDate = endDatePicker.date
+                deadlineDatePicker.date = endDate
+                
+                // 3) Prevent selecting a deadline before the event ends
+                deadlineDatePicker.minimumDate = endDate
+            }
+            
+            // 4) Force layout update for scrolling
             container.layoutIfNeeded()
             
-            // Find the scroll view by traversing up the view hierarchy
+            // 5) Find the scroll view by traversing up the view hierarchy
             var currentView = container as UIView
             var scrollView: UIScrollView?
             
@@ -542,7 +570,7 @@ class AddEventViewController: UIViewController {
                 currentView = currentView.superview!
             }
             
-            // Scroll to make the deadline picker visible
+            // 6) Scroll to make the deadline picker visible
             if let scrollView = scrollView {
                 scrollView.layoutIfNeeded()
                 
@@ -551,7 +579,7 @@ class AddEventViewController: UIViewController {
                 let bottomOfContainer = containerRect.maxY
                 
                 // Calculate new offset
-                let newOffset = bottomOfContainer - scrollView.bounds.height + 100 // Add padding
+                let newOffset = bottomOfContainer - scrollView.bounds.height + 100 // add some padding
                 if newOffset > scrollView.contentOffset.y {
                     DispatchQueue.main.async {
                         scrollView.setContentOffset(CGPoint(x: 0, y: newOffset), animated: true)
@@ -560,6 +588,7 @@ class AddEventViewController: UIViewController {
             }
         }
     }
+
     
     // MARK: - Helper to Build Custom Event
     /// Builds a new CustomEvent from the input fields.
