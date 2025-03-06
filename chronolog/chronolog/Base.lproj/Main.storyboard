@@ -401,6 +401,9 @@
                         <color key="backgroundColor" systemColor="systemBackgroundColor"/>
                     </view>
                     <navigationItem key="navigationItem" id="FZ4-FT-NG5"/>
+                    <connections>
+                        <segue destination="BYZ-38-t0r" kind="showDetail" identifier="goToHome" id="Rta-7W-8FF"/>
+                    </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="SF6-zC-nsI" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
             </objects>
@@ -480,7 +483,7 @@
     <inferredMetricsTieBreakers>
         <segue reference="Gj6-Hp-aEM"/>
         <segue reference="8un-05-ZV9"/>
-        <segue reference="XEv-q6-NSO"/>
+        <segue reference="Rta-7W-8FF"/>
     </inferredMetricsTieBreakers>
     <resources>
         <image name="arrowshape.turn.up.backward.fill" catalog="system" width="128" height="104"/>

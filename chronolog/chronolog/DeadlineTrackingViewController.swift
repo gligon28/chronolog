@@ -240,6 +240,69 @@ class DeadlineTrackingViewController: UIViewController, UITableViewDelegate, UIT
         // Push to navigation stack
         navigationController?.pushViewController(detailVC, animated: true)
     }
+    
+    // MARK: - Deletion Methods
+
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        if editingStyle == .delete {
+            // Remove from local array
+            events.remove(at: indexPath.row)
+            
+            // Update the UI
+            tableView.deleteRows(at: [indexPath], with: .fade)
+            
+            // If we have no events left, show the empty message
+            if events.isEmpty {
+                tableView.setEmptyMessage("No upcoming deadlines")
+            }
+        }
+    }
+
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        // Create swipe action
+        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (action, view, completion) in
+            guard let self = self else {
+                completion(false)
+                return
+            }
+            
+            // Show confirmation alert
+            let alert = UIAlertController(
+                title: "Delete Deadline",
+                message: "Are you sure you want to delete this deadline from the list?",
+                preferredStyle: .alert
+            )
+            
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+                completion(false)
+            })
+            
+            alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { _ in
+                // Remove from local array
+                self.events.remove(at: indexPath.row)
+                
+                // Update the UI
+                self.tableView.deleteRows(at: [indexPath], with: .fade)
+                
+                // If we have no events left, show the empty message
+                if self.events.isEmpty {
+                    self.tableView.setEmptyMessage("No upcoming deadlines")
+                }
+                
+                completion(true)
+            })
+            
+            self.present(alert, animated: true)
+        }
+        
+        // Configure swipe action
+        deleteAction.backgroundColor = .systemRed
+        
+        // Create and return swipe actions configuration
+        let configuration = UISwipeActionsConfiguration(actions: [deleteAction])
+        configuration.performsFirstActionWithFullSwipe = false
+        return configuration
+    }
 }
 
 // MARK: - Empty Table View Extension

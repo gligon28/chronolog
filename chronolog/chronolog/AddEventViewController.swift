@@ -25,6 +25,8 @@ class AddEventViewController: UIViewController {
         setupScrollView()
         setupActivityDetailContainer()
         setupActionButtons()
+        
+        configureReturnKeysToDone()
     }
 
     // MARK: - Scroll View Setup
@@ -1121,5 +1123,36 @@ class AddEventViewController: UIViewController {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+    
+    func configureReturnKeysToDone() {
+        // Function to find and configure all text fields in the view hierarchy
+        func configureTextFields(in view: UIView) {
+            for subview in view.subviews {
+                if let textField = subview as? UITextField {
+                    // Change the return key type to "Done"
+                    textField.returnKeyType = .done
+                    
+                    // Set the delegate to handle the "Done" key press
+                    textField.delegate = self
+                }
+                
+                // Recursively check subviews
+                if !subview.subviews.isEmpty {
+                    configureTextFields(in: subview)
+                }
+            }
+        }
+        
+        // Start the recursive search from the main view
+        configureTextFields(in: self.view)
+    }
+}
+
+extension AddEventViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        // Dismiss the keyboard when Done is pressed
+        textField.resignFirstResponder()
+        return true
     }
 }

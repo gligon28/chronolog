@@ -107,29 +107,6 @@ class SettingsViewController: UITableViewController {
             present(alert, animated: true)
         }
     }
-    
-//    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-//            tableView.deselectRow(at: indexPath, animated: true)
-//            
-//            if indexPath.section == 0 {
-//                let progressVC = ProgressTrackingViewController()
-//                self.navigationController?.pushViewController(progressVC, animated: true)
-//            } else if indexPath.section == 1 {
-//                // Show confirmation alert before signing out
-//                let alert = UIAlertController(
-//                    title: "Sign Out",
-//                    message: "Are you sure you want to sign out?",
-//                    preferredStyle: .alert
-//                )
-//                
-//                alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-//                alert.addAction(UIAlertAction(title: "Sign Out", style: .destructive) { [weak self] _ in
-//                    self?.handleSignOut()
-//                })
-//                
-//                present(alert, animated: true)
-//            }
-//        }
         
         // MARK: - Navigation
         
@@ -155,9 +132,8 @@ class SettingsViewController: UITableViewController {
             do {
                 try Auth.auth().signOut()
                 activeUser = nil
-                
-                // Navigate to login screen programmatically
-                navigateToLogin()
+                print("navigating to login")
+                self.performSegue(withIdentifier: "goToHome", sender: self)
             } catch let error {
                 print("Error signing out: \(error.localizedDescription)")
                 // Show error alert
@@ -171,38 +147,4 @@ class SettingsViewController: UITableViewController {
             }
         }
         
-        func navigateToLogin() {
-            // Get reference to the login view controller from storyboard
-            if let loginVC = self.storyboard?.instantiateViewController(withIdentifier: "LoginViewController") {
-                // For full screen presentation
-                loginVC.modalPresentationStyle = .fullScreen
-                
-                // For apps using a navigation controller
-                if let navigationController = self.navigationController {
-                    // Option 1: Pop to root if login is the root
-                    navigationController.popToRootViewController(animated: true)
-                    
-                    // Option 2: Set the view controllers array to just include login
-                    // navigationController.setViewControllers([loginVC], animated: true)
-                } else {
-                    // If no navigation controller, present modally
-                    self.present(loginVC, animated: true, completion: nil)
-                }
-            } else {
-                // Fallback if storyboard ID is not found
-                // This assumes you have a window reference (iOS 13+ uses scenes)
-                if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate,
-                   let window = sceneDelegate.window {
-                    // If using a navigation controller as root
-                    if let navController = window.rootViewController as? UINavigationController {
-                        navController.popToRootViewController(animated: true)
-                    } else {
-                        // Reset to the app's initial view controller
-                        let storyboard = UIStoryboard(name: "Main", bundle: nil)
-                        window.rootViewController = storyboard.instantiateInitialViewController()
-                        window.makeKeyAndVisible()
-                    }
-                }
-            }
-        }
     }

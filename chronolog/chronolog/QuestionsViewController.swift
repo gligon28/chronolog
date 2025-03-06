@@ -20,6 +20,8 @@ class QuestionsViewController: UIViewController {
         setupScrollView()
         setupActivitySections()
         setupSaveButton()
+        
+        configureReturnKeysToDone()
     }
 
     @IBAction func btnSignOut(_ sender: UIButton) {
@@ -833,6 +835,35 @@ class QuestionsViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
     }
+    
+    func configureReturnKeysToDone() {
+        // Function to find and configure all text fields in the view hierarchy
+        func configureTextFields(in view: UIView) {
+            for subview in view.subviews {
+                if let textField = subview as? UITextField {
+                    // Change the return key type to "Done"
+                    textField.returnKeyType = .done
+                    
+                    // Set the delegate to handle the "Done" key press
+                    textField.delegate = self
+                }
+                
+                // Recursively check subviews
+                if !subview.subviews.isEmpty {
+                    configureTextFields(in: subview)
+                }
+            }
+        }
+        
+        // Start the recursive search from the main view
+        configureTextFields(in: self.view)
+    }
+}
 
-
+extension QuestionsViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        // Dismiss the keyboard when Done is pressed
+        textField.resignFirstResponder()
+        return true
+    }
 }
