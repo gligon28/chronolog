@@ -38,6 +38,7 @@
 		50759B292CBB2BA100B6D89A /* CalendarKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50759B282CBB2BA100B6D89A /* CalendarKit */; };
 		50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */; };
 		50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */; };
+		508690012D7A6CB1000DF60F /* TrafficFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508690002D7A6CB1000DF60F /* TrafficFeature.swift */; };
 		508A253C2CAB4D0F00488B39 /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508A253B2CAB4D0F00488B39 /* HomeViewController.swift */; };
 		50C5475C2D6F53FD00E8996A /* UserNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C5475B2D6F53FD00E8996A /* UserNotification.swift */; };
 		50CCB6752D7690DD004D5ACD /* DeadlineTrackingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CCB6742D7690DD004D5ACD /* DeadlineTrackingViewController.swift */; };
@@ -63,6 +64,7 @@
 		506D4A0C2CFF920500D4128F /* AIConflictResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIConflictResolver.swift; sourceTree = "<group>"; };
 		50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarViewController.swift; sourceTree = "<group>"; };
 		50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEvent.swift; sourceTree = "<group>"; };
+		508690002D7A6CB1000DF60F /* TrafficFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficFeature.swift; sourceTree = "<group>"; };
 		508A253B2CAB4D0F00488B39 /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
 		50C5475B2D6F53FD00E8996A /* UserNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserNotification.swift; sourceTree = "<group>"; };
 		50CCB6742D7690DD004D5ACD /* DeadlineTrackingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeadlineTrackingViewController.swift; sourceTree = "<group>"; };
@@ -159,6 +161,7 @@
 				5011DA912D7130CC00BC2875 /* Config.plist */,
 				5011DA932D7130F300BC2875 /* Config.plist */,
 				50CCB6742D7690DD004D5ACD /* DeadlineTrackingViewController.swift */,
+				508690002D7A6CB1000DF60F /* TrafficFeature.swift */,
 			);
 			path = chronolog;
 			sourceTree = "<group>";
@@ -269,6 +272,7 @@
 			files = (
 				50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */,
 				505E35952CC18ACF0060CA2E /* AddEventViewController.swift in Sources */,
+				508690012D7A6CB1000DF60F /* TrafficFeature.swift in Sources */,
 				50CCB6752D7690DD004D5ACD /* DeadlineTrackingViewController.swift in Sources */,
 				50C5475C2D6F53FD00E8996A /* UserNotification.swift in Sources */,
 				50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */,

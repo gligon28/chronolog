@@ -27,7 +27,7 @@ struct CustomEvent {
     var allowOverlap: Bool
     var priority: Priority
     var deadline: Date?
-    
+    var location: String?
 }
 
 // Add an extension for JSON encoding/decoding
@@ -46,6 +46,7 @@ extension CustomEvent: Codable {
         case allowOverlap
         case priority
         case deadline
+        case location
     }
     
     func encode(to encoder: Encoder) throws {
@@ -64,6 +65,7 @@ extension CustomEvent: Codable {
         try container.encode(allowOverlap, forKey: .allowOverlap)
         try container.encode(priority.rawValue, forKey: .priority)
         try container.encodeIfPresent(deadline, forKey: .deadline)
+        try container.encodeIfPresent(location, forKey: .location)
     }
     
     init(from decoder: Decoder) throws {
@@ -81,6 +83,7 @@ extension CustomEvent: Codable {
         allowSplit = try container.decode(Bool.self, forKey: .allowSplit)
         allowOverlap = try container.decode(Bool.self, forKey: .allowOverlap)
         deadline = try container.decodeIfPresent(Date.self, forKey: .deadline)
+        location = try container.decodeIfPresent(String.self, forKey: .location)
         
         let priorityString = try container.decode(String.self, forKey: .priority)
         priority = Priority(rawValue: priorityString) ?? .low
