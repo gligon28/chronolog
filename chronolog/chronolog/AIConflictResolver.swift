@@ -204,6 +204,65 @@ class OpenAIAPIClient: OpenAIClient {
         
         return responseString
     }
+    
+    
+}
+
+extension OpenAIAPIClient {
+    /// Asks GPT-4 for an estimated duration (in minutes) given an event title.
+    func getDurationEstimate(forTitle title: String) async throws -> Int {
+        // Construct a user prompt that asks for a single integer in minutes
+        let userPrompt = """
+        I have a task called "\(title)". Please estimate how many minutes this task might take.
+        Return ONLY a single integer (in minutes) without any extra text.
+        """
+
+        // We'll reuse the chat completions endpoint
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": userPrompt]
+        ]
+
+        let payload: [String: Any] = [
+            "model": "gpt-4o",       // or "gpt-3.5-turbo" if that’s what you’re using
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": 50
+        ]
+
+        // Build the request
+        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey ?? "")", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+        // Perform the request
+        let (data, _) = try await URLSession.shared.data(for: request)
+        guard let responseString = String(data: data, encoding: .utf8) else {
+            throw ScheduleError.decodingError
+        }
+        print("Raw response from model for duration estimate:\n\(responseString)\n")
+
+        // Decode the top-level ChatCompletion response (reuse your OpenAIResponse)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let openAIResponse = try decoder.decode(OpenAIResponse.self, from: data)
+        guard let content = openAIResponse.choices.first?.message.content else {
+            throw ScheduleError.decodingError
+        }
+
+        // We expect the model to return just an integer or something containing an integer
+        // We’ll parse out digits from the content:
+        let digits = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: CharacterSet.decimalDigits.inverted)
+            .joined() // keep only digits
+
+        guard let intValue = Int(digits) else {
+            throw ScheduleError.decodingError
+        }
+        return intValue
+    }
 }
 
 // MARK: - Error Handling

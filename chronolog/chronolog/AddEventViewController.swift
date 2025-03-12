@@ -131,7 +131,131 @@ class AddEventViewController: UIViewController {
         addAllowSplittingSwitch(to: container)
         addAllowOverlapSwitch(to: container)
         addNoteTextField(to: container)
+        
+        // 1) Create the “Not sure how long?” button
+        let guessDurationButton = UIButton(type: .system)
+        guessDurationButton.setTitle("Not sure how long this will take?", for: .normal)
+        guessDurationButton.setTitleColor(.white, for: .normal)
+        guessDurationButton.backgroundColor = .systemBlue
+        guessDurationButton.layer.cornerRadius = 8
+        guessDurationButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        guessDurationButton.addTarget(self, action: #selector(guessDurationTapped), for: .touchUpInside)
+        container.addArrangedSubview(guessDurationButton)
     }
+    
+    @objc func guessDurationTapped() {
+        // 1) Get the event title
+        guard let container = stackView.arrangedSubviews.first as? UIStackView else { return }
+        guard let titleField = container.arrangedSubviews.first(where: { $0 is UITextField }) as? UITextField else {
+            return
+        }
+        let eventTitle = titleField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !eventTitle.isEmpty else {
+            showAlert(title: "Missing Title", message: "Please enter a title first.")
+            return
+        }
+
+        // 2) Show a loading alert
+        let loadingAlert = UIAlertController(title: "Estimating Duration", message: "Please wait...", preferredStyle: .alert)
+        let indicator = UIActivityIndicatorView(style: .medium)
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        indicator.startAnimating()
+        loadingAlert.view.addSubview(indicator)
+        NSLayoutConstraint.activate([
+            indicator.centerXAnchor.constraint(equalTo: loadingAlert.view.centerXAnchor),
+            indicator.bottomAnchor.constraint(equalTo: loadingAlert.view.bottomAnchor, constant: -20)
+        ])
+        present(loadingAlert, animated: true)
+
+        // 3) Call GPT-4
+        let openAIClient = OpenAIAPIClient(apiKey: Config.openAIToken)  // reuse or create new
+        Task {
+            do {
+                let minutes = try await openAIClient.getDurationEstimate(forTitle: eventTitle)
+                // Move back to main thread
+                await MainActor.run {
+                    loadingAlert.dismiss(animated: true) {
+                        // 4) Show a pop-up with a countdown date picker
+                        self.showEstimatedDurationPopup(minutes: minutes)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    loadingAlert.dismiss(animated: true) {
+                        self.showAlert(title: "Error", message: "Could not get an estimate. \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+    }
+    
+    func showEstimatedDurationPopup(minutes: Int) {
+        let alert = UIAlertController(title: "AI-Estimated Duration",
+                                      message: "Adjust if needed, then tap Approve.",
+                                      preferredStyle: .alert)
+        
+        // Create a simple view controller to hold the picker
+        let pickerVC = UIViewController()
+        pickerVC.preferredContentSize = CGSize(width: 250, height: 150)
+
+        // Create the picker
+        let durationPicker = UIDatePicker()
+        durationPicker.datePickerMode = .countDownTimer
+        durationPicker.countDownDuration = TimeInterval(minutes * 60)
+        durationPicker.translatesAutoresizingMaskIntoConstraints = false
+        pickerVC.view.addSubview(durationPicker)
+        
+        // Constrain the picker to fill pickerVC
+        NSLayoutConstraint.activate([
+            durationPicker.centerXAnchor.constraint(equalTo: pickerVC.view.centerXAnchor),
+            durationPicker.centerYAnchor.constraint(equalTo: pickerVC.view.centerYAnchor)
+        ])
+
+        // Inject the pickerVC into the alert
+        alert.setValue(pickerVC, forKey: "contentViewController")
+
+        // Approve action
+        alert.addAction(UIAlertAction(title: "Approve", style: .default, handler: { _ in
+            let selectedDuration = durationPicker.countDownDuration
+            self.applyEstimatedDurationFromPopup(selectedDuration)
+        }))
+
+        // Cancel action
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+        present(alert, animated: true)
+    }
+
+
+    func applyEstimatedDurationFromPopup(_ durationSeconds: TimeInterval) {
+        guard let container = stackView.arrangedSubviews.first as? UIStackView else { return }
+
+        // Turn on the “Add Duration” switch if found
+        if let durationContainer = container.arrangedSubviews.first(where: {
+            ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Add Duration" }) == true
+        }) as? UIStackView,
+           let durationSwitch = durationContainer.arrangedSubviews.first(where: { $0 is UISwitch }) as? UISwitch {
+            durationSwitch.isOn = true
+        }
+
+        // Show the duration picker
+        guard let durationPicker = durationPickers[container] else {
+            showAlert(title: "Error", message: "No duration picker found.")
+            return
+        }
+        durationPicker.isHidden = false
+        durationPicker.countDownDuration = durationSeconds
+
+        // If there's a “Starts” and “Ends” date picker, update the end
+        if let startDatePicker = findDatePicker(in: container, withLabel: "Starts"),
+           let endDatePicker = findDatePicker(in: container, withLabel: "Ends") {
+            let newEnd = startDatePicker.date.addingTimeInterval(durationSeconds)
+            endDatePicker.setDate(newEnd, animated: true)
+            endDatePicker.minimumDate = newEnd
+        }
+    }
+
+
     
     // Add Location Field
     func addLocationField(to container: UIStackView) {
