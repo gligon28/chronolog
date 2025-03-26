@@ -8,6 +8,9 @@
 import Foundation
 import CoreLocation
 import MapKit
+import Firebase
+import FirebaseAuth
+import FirebaseFirestore
 
 enum TravelMode {
     case driving
@@ -25,8 +28,6 @@ enum TravelMode {
         }
     }
 }
-
-// CustomEvent is imported from another file
 
 // Model to hold travel time results
 struct TravelTimeResult {
@@ -143,222 +144,259 @@ class TravelTimeCalculator {
 
 class EventTravelNotificationManager {
     private let travelCalculator = TravelTimeCalculator()
+    static let shared = EventTravelNotificationManager()
     
-    // Time threshold before event start to check travel time (default 1 hour)
+    // Check travel time about 1 hour before event starts
     private let notificationThreshold: TimeInterval = 60 * 60
     
-    // Minimum time before event to notify (default 30 minutes)
-    private let minimumNotifyTime: TimeInterval = 30 * 60
+    // Buffer time to add to travel duration (5 minutes)
+    private let bufferTime: TimeInterval = 5 * 60
     
-    // Function to setup travel time monitoring for an event
-    func monitorTravelTimeForEvent(
-        event: CustomEvent,
-        userLocationProvider: @escaping () -> CLLocationCoordinate2D?,
-        travelMode: TravelMode = .driving
-    ) {
+    // Schedule a travel time notification for an event
+    func scheduleTravelCheck(for event: CustomEvent) {
         // Verify the event has required properties
         guard let startTime = event.startTime,
               let location = event.location,
               !location.isEmpty else {
-            print("Cannot monitor travel time: Event missing start time or location")
+            print("Cannot schedule travel check: Event missing start time or location")
             return
         }
         
-        // Calculate time until notification check should happen
-        let timeUntilCheck = max(0, startTime.timeIntervalSinceNow - notificationThreshold)
-        
-        // Schedule the travel time check
-        DispatchQueue.global().asyncAfter(deadline: .now() + timeUntilCheck) { [weak self] in
-            guard let self = self else { return }
-            
-            // Get current user location when it's time to check
-            guard let currentLocation = userLocationProvider() else {
-                print("Failed to get user location for travel time calculation")
-                return
-            }
-            
-            self.checkAndNotifyTravelTime(
-                event: event,
-                userLocation: currentLocation,
-                travelMode: travelMode
-            )
+        // Calculate when to check travel time (1 hour before event)
+        let checkTime = startTime.addingTimeInterval(-notificationThreshold)
+
+        // Only do immediate check if check time is in the past
+        if checkTime <= Date() {
+            checkTravelTimeNow(for: event)
+            return
         }
-    }
-    
-    // Check travel time and send notification if needed
-    private func checkAndNotifyTravelTime(
-        event: CustomEvent,
-        userLocation: CLLocationCoordinate2D,
-        travelMode: TravelMode
-    ) {
-        guard let startTime = event.startTime else { return }
+        let now = Date()
+        print("Current time: \(now)")
+        print("Event start time: \(startTime)")
+        print("Check time (1 hour before): \(checkTime)")
+        print("Is check time <= now? \(checkTime <= now)")
         
-        travelCalculator.calculateTravelTimeToEvent(
-            userLocation: userLocation,
-            event: event,
-            travelMode: travelMode
-        ) { [weak self] result in
-            guard let self = self else { return }
-            
-            switch result {
-            case .success(let travelResult):
-                // Determine when user should leave
-                let travelTimeSeconds = TimeInterval(travelResult.travelTimeSeconds)
-                let bufferTime: TimeInterval = 5 * 60 // 5 minute buffer
-                let leaveTime = startTime.addingTimeInterval(-(travelTimeSeconds + bufferTime))
-                
-                // Check if notification is still relevant (not too late)
-                let timeUntilLeave = leaveTime.timeIntervalSinceNow
-                if timeUntilLeave < self.minimumNotifyTime {
-                    // User should leave soon, notify immediately
-                    self.sendImmediateTravelAlert(
-                        event: event,
-                        travelResult: travelResult,
-                        leaveBy: leaveTime
-                    )
-                } else {
-                    // Schedule notification for closer to leave time
-                    self.scheduleLeaveTimeNotification(
-                        event: event,
-                        travelResult: travelResult,
-                        leaveTime: leaveTime
-                    )
-                }
-                
-            case .failure(let error):
-                print("Failed to calculate travel time: \(error.localizedDescription)")
-            }
-        }
-    }
-    
-    // Send immediate alert if user needs to leave soon
-    private func sendImmediateTravelAlert(
-        event: CustomEvent,
-        travelResult: TravelTimeResult,
-        leaveBy: Date
-    ) {
-        let leaveTimeFormatter = DateFormatter()
-        leaveTimeFormatter.dateStyle = .none
-        leaveTimeFormatter.timeStyle = .short
+        // Generate a unique ID for this travel check
+        let checkId = generateCheckId(for: event)
         
-        let message = """
-        Travel alert for "\(event.title)":
-        It will take \(travelResult.formattedTravelTime) to reach your destination.
-        Leave by \(leaveTimeFormatter.string(from: leaveBy)) to arrive on time.
-        """
+        // Store the event info in Firebase for retrieval when notification triggers
+        storeEventForTravelCheck(id: checkId, event: event)
         
-        // Here you would integrate with your notification system
-        // This is just a placeholder implementation
-        NotificationCenter.default.post(
-            name: Notification.Name("ImmediateTravelAlert"),
-            object: nil,
-            userInfo: [
-                "message": message,
-                "eventTitle": event.title,
-                "travelTime": travelResult.formattedTravelTime,
-                "leaveTime": leaveBy
-            ]
-        )
-        
-        // Uncomment and modify to use UNUserNotificationCenter
-        
+        // Create the notification content
         let content = UNMutableNotificationContent()
-        content.title = "Time to leave now"
-        content.body = message
-        content.sound = .default
+        content.title = "Travel Check" // This won't be seen by user
+        content.body = "Checking travel time for \(event.title)" // This won't be seen by user
+        content.sound = nil // Silent notification
+        content.categoryIdentifier = "TRAVEL_CHECK"
         
-        let request = UNNotificationRequest(
-            identifier: "travel-\(event.title)-\(UUID().uuidString)",
-            content: content,
-            trigger: nil // Immediate notification
+        // Store the check ID in the notification
+        content.userInfo = [
+            "checkId": checkId,
+            "eventTitle": event.title,
+            "eventLocation": location,
+            "eventStartTime": startTime.timeIntervalSince1970
+        ]
+        
+        // Create trigger for checkTime
+        let triggerDate = Calendar.current.dateComponents(
+            [.year, .month, .day, .hour, .minute, .second],
+            from: checkTime
         )
+        let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
         
-        UNUserNotificationCenter.current().add(request)
-        
-    }
-    
-    // Schedule notification for when user should leave
-    private func scheduleLeaveTimeNotification(
-        event: CustomEvent,
-        travelResult: TravelTimeResult,
-        leaveTime: Date
-    ) {
-        // Schedule notification for 15 minutes before leave time
-        let notificationTime = leaveTime.addingTimeInterval(-15 * 60)
-        
-        // Format the notification content
-        let message = """
-        Time to prepare for "\(event.title)":
-        It will take \(travelResult.formattedTravelTime) to reach your destination.
-        You should leave in 15 minutes.
-        """
-        
-        print("Scheduled notification for \(notificationTime): \(message)")
-        
-        // Uncomment and modify to use UNUserNotificationCenter
-        
-        let content = UNMutableNotificationContent()
-        content.title = "Time to leave soon"
-        content.body = message
-        content.sound = .default
-        
-        let timeInterval = notificationTime.timeIntervalSinceNow
-        guard timeInterval > 0 else { return }
-        
-        let trigger = UNTimeIntervalNotificationTrigger(
-            timeInterval: timeInterval,
-            repeats: false
-        )
-        
+        // Create request
         let request = UNNotificationRequest(
-            identifier: "travel-\(event.title)-\(UUID().uuidString)",
+            identifier: "travelcheck-\(checkId)",
             content: content,
             trigger: trigger
         )
         
+        // Schedule notification
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Error scheduling travel check notification: \(error)")
+            } else {
+                print("Successfully scheduled travel check for: \(event.title) at \(checkTime)")
+            }
+        }
+    }
+    
+    // Generate a unique ID for a check
+    private func generateCheckId(for event: CustomEvent) -> String {
+        guard let startTime = event.startTime else { return UUID().uuidString }
+        return "\(event.title.hashValue)-\(startTime.timeIntervalSince1970.hashValue)"
+    }
+    
+    private func storeEventForTravelCheck(id: String, event: CustomEvent) {
+        guard let userID = Auth.auth().currentUser?.uid,
+              let startTime = event.startTime else {
+            print("❌ Failed to store travel check: User not authenticated or event has no start time")
+            return
+        }
+        
+        print("👤 User ID: \(userID)")
+        print("📅 Event: \(event.title) at \(startTime)")
+        
+        let db = Firestore.firestore()
+        let path = "userEvents/\(userID)/travelChecks/\(id)"
+        print("📝 Attempting to write to path: \(path)")
+        
+        let travelCheckData: [String: Any] = [
+            "title": event.title,
+            "startTime": Timestamp(date: startTime),
+            "location": event.location ?? "",
+            "checkTime": Timestamp(date: startTime.addingTimeInterval(-notificationThreshold)),
+            "createdAt": Timestamp(date: Date())
+        ]
+        
+        db.collection("userEvents").document(userID).collection("travelChecks").document(id).setData(travelCheckData) { error in
+            if let error = error {
+                print("❌ Error storing travel check: \(error.localizedDescription)")
+                print("❌ Error code: \((error as NSError).code)")
+                print("❌ Error domain: \((error as NSError).domain)")
+            } else {
+                print("✅ Successfully stored travel check for event: \(event.title) with ID: \(id)")
+            }
+        }
+    }
+    
+    // Check travel time immediately (when app is open)
+    func checkTravelTimeNow(for event: CustomEvent) {
+        guard let startTime = event.startTime,
+              let location = event.location,
+              !location.isEmpty else { return }
+        
+        // Get current location
+        LocationManager.shared.getCurrentLocation { [weak self] currentLocation in
+            guard let self = self, let currentLocation = currentLocation else {
+                print("Failed to get current location")
+                return
+            }
+            
+            // Calculate travel time
+            self.travelCalculator.calculateTravelTimeToEvent(
+                userLocation: currentLocation.coordinate,
+                event: event,
+                travelMode: .driving
+            ) { result in
+                switch result {
+                case .success(let travelResult):
+                    // Determine when user should leave
+                    let travelTimeSeconds = TimeInterval(travelResult.travelTimeSeconds)
+                    let leaveTime = startTime.addingTimeInterval(-(travelTimeSeconds + self.bufferTime))
+                    
+                    // Schedule "leave now" notification
+                    self.scheduleLeaveNotification(event: event, travelResult: travelResult, leaveTime: leaveTime)
+                    
+                case .failure(let error):
+                    print("Error calculating travel time: \(error)")
+                }
+            }
+        }
+    }
+    
+    // Process a travel check notification that fired (app was closed)
+    func processTravelCheckNotification(with userInfo: [AnyHashable: Any]) {
+        guard let eventTitle = userInfo["eventTitle"] as? String,
+              let eventLocation = userInfo["eventLocation"] as? String,
+              let eventStartTimeInterval = userInfo["eventStartTime"] as? TimeInterval else {
+            print("Missing required event info in notification")
+            return
+        }
+        
+        let eventStartTime = Date(timeIntervalSince1970: eventStartTimeInterval)
+        
+        // Create a minimal event object from the notification data
+        let event = CustomEvent(
+            title: eventTitle,
+            date: eventStartTime,
+            startTime: eventStartTime,
+            endTime: eventStartTime.addingTimeInterval(3600), // Default 1 hour duration
+            duration: 3600,
+            description: [""],
+            isRecurring: false,
+            daysOfWeek: nil,
+            isAllDay: false,
+            allowSplit: false,
+            allowOverlap: false,
+            priority: .medium,
+            deadline: nil,
+            location: eventLocation
+        )
+        
+        // Since we're processing a notification, check travel time now
+        checkTravelTimeNow(for: event)
+    }
+    
+    // Schedule the "time to leave" notification
+    private func scheduleLeaveNotification(event: CustomEvent, travelResult: TravelTimeResult, leaveTime: Date) {
+        let timeUntilLeave = leaveTime.timeIntervalSinceNow
+        
+        // If user needs to leave in less than 5 minutes, send immediate notification
+        if timeUntilLeave < 300 {
+            sendImmediateLeaveAlert(event: event, travelResult: travelResult, leaveBy: leaveTime)
+            return
+        }
+        
+        // Otherwise, schedule a notification for the leave time
+        let content = UNMutableNotificationContent()
+        content.title = "Time to Leave"
+        content.body = "Leave now for \(event.title). It will take \(travelResult.formattedTravelTime) to arrive."
+        content.sound = .default
+        
+        // Schedule for 15 minutes before leave time to give user preparation time
+        let notificationTime = leaveTime.addingTimeInterval(-15 * 60)
+        let timeComponents = Calendar.current.dateComponents(
+            [.year, .month, .day, .hour, .minute, .second],
+            from: notificationTime
+        )
+        
+        let trigger = UNCalendarNotificationTrigger(dateMatching: timeComponents, repeats: false)
+        
+        let request = UNNotificationRequest(
+            identifier: "leave-\(event.title)-\(UUID().uuidString)",
+            content: content,
+            trigger: trigger
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Error scheduling leave notification: \(error)")
+            }
+        }
+    }
+    
+    // Send immediate alert for leaving now
+    private func sendImmediateLeaveAlert(event: CustomEvent, travelResult: TravelTimeResult, leaveBy: Date) {
+        let content = UNMutableNotificationContent()
+        content.title = "Time to Leave Now"
+        content.body = "Leave immediately for \(event.title). It will take \(travelResult.formattedTravelTime) to arrive."
+        content.sound = .default
+        
+        // Use nil trigger for immediate delivery
+        let request = UNNotificationRequest(
+            identifier: "leave-now-\(event.title)-\(UUID().uuidString)",
+            content: content,
+            trigger: nil
+        )
+        
         UNUserNotificationCenter.current().add(request)
     }
-}
-
-// MARK: - Usage Example
-/*
-// Example of how to use this in your app:
-
-class AppDelegate: UIResponder, UIApplicationDelegate, CLLocationManagerDelegate {
-    let locationManager = CLLocationManager()
-    let travelNotificationManager = EventTravelNotificationManager()
     
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Set up location manager
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        locationManager.requestWhenInUseAuthorization()
+    // Cancel travel checks for an event (e.g. when event is deleted)
+    func cancelTravelChecks(for event: CustomEvent) {
+        guard let userID = Auth.auth().currentUser?.uid else { return }
         
-        // Set up notifications
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
-            if granted {
-                print("Notification permission granted")
-            } else {
-                print("Notification permission denied: \(error?.localizedDescription ?? "Unknown error")")
-            }
-        }
+        // Generate check ID
+        let checkId = generateCheckId(for: event)
         
-        return true
-    }
-    
-    // Call this whenever events are loaded or created
-    func setupTravelMonitoring(for events: [CustomEvent]) {
-        for event in events {
-            // Only monitor events with locations
-            if let location = event.location, !location.isEmpty {
-                travelNotificationManager.monitorTravelTimeForEvent(
-                    event: event,
-                    userLocationProvider: { [weak self] in
-                        return self?.locationManager.location?.coordinate
-                    }
-                )
-            }
-        }
+        // Remove from Firebase
+        let db = Firestore.firestore()
+        db.collection("userEvents").document(userID).collection("travelChecks").document(checkId).delete()
+        
+        // Cancel any pending notifications
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: ["travelcheck-\(checkId)"]
+        )
     }
 }
-*/

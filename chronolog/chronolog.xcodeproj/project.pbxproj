@@ -39,6 +39,7 @@
 		50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */; };
 		50759B2F2CBB4E9100B6D89A /* CustomEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */; };
 		508690012D7A6CB1000DF60F /* TrafficFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508690002D7A6CB1000DF60F /* TrafficFeature.swift */; };
+		508690032D7BFA27000DF60F /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508690022D7BFA27000DF60F /* LocationManager.swift */; };
 		508A253C2CAB4D0F00488B39 /* HomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508A253B2CAB4D0F00488B39 /* HomeViewController.swift */; };
 		50C5475C2D6F53FD00E8996A /* UserNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C5475B2D6F53FD00E8996A /* UserNotification.swift */; };
 		50CCB6752D7690DD004D5ACD /* DeadlineTrackingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CCB6742D7690DD004D5ACD /* DeadlineTrackingViewController.swift */; };
@@ -65,6 +66,7 @@
 		50759B2C2CBB2C6F00B6D89A /* CalendarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarViewController.swift; sourceTree = "<group>"; };
 		50759B2E2CBB4E9100B6D89A /* CustomEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomEvent.swift; sourceTree = "<group>"; };
 		508690002D7A6CB1000DF60F /* TrafficFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficFeature.swift; sourceTree = "<group>"; };
+		508690022D7BFA27000DF60F /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		508A253B2CAB4D0F00488B39 /* HomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewController.swift; sourceTree = "<group>"; };
 		50C5475B2D6F53FD00E8996A /* UserNotification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserNotification.swift; sourceTree = "<group>"; };
 		50CCB6742D7690DD004D5ACD /* DeadlineTrackingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeadlineTrackingViewController.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				5011DA932D7130F300BC2875 /* Config.plist */,
 				50CCB6742D7690DD004D5ACD /* DeadlineTrackingViewController.swift */,
 				508690002D7A6CB1000DF60F /* TrafficFeature.swift */,
+				508690022D7BFA27000DF60F /* LocationManager.swift */,
 			);
 			path = chronolog;
 			sourceTree = "<group>";
@@ -278,6 +281,7 @@
 				50759B2D2CBB2C6F00B6D89A /* CalendarViewController.swift in Sources */,
 				D1A345542C9F9864005B1F44 /* CreateAccountViewController.swift in Sources */,
 				5054B33E2CA1110A0020F9C3 /* QuestionsViewController.swift in Sources */,
+				508690032D7BFA27000DF60F /* LocationManager.swift in Sources */,
 				D1A345612CA0DF4F005B1F44 /* ChecklistViewController.swift in Sources */,
 				D1FCDA262CB42C780061EAA9 /* GetToKnowViewController.swift in Sources */,
 				508A253C2CAB4D0F00488B39 /* HomeViewController.swift in Sources */,

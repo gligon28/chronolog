@@ -23,6 +23,8 @@ class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
     let saveButton = UIButton(type: .system)
     let resetButton = UIButton(type: .system)
     
+    private let travelNotificationManager = EventTravelNotificationManager()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -38,6 +40,7 @@ class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
         searchCompleter.resultTypes = .address
         
         configureReturnKeysToDone()
+        _ = LocationManager.shared
     }
 
     // MARK: - Scroll View Setup
@@ -802,6 +805,10 @@ class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
             return
         }
         
+        if let location = newEvent.location, !location.isEmpty {
+            requestLocationPermission()
+        }
+        
         // Fetch existing events from Firebase.
         fetchExistingEvents { [weak self] existingEvents in
             guard let self = self else { return }
@@ -962,6 +969,11 @@ class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
                         isAllDay: newEvent.isAllDay,
                         priority: priorityString
                     )
+                    // Set up travel notification if location exists
+                    if let location = newEvent.location, !location.isEmpty {
+                        self.setupTravelNotification(for: newEvent)
+                    }
+                                    
                     self.resetForm()
                     self.promptToAddAnotherEvent()
                 }
@@ -1300,6 +1312,72 @@ class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
                 self?.hideLocationResultsTableView()
             }
         }
+    
+    func setupTravelNotification(for event: CustomEvent) {
+        // Ensure the event has required properties
+        guard event.startTime != nil,
+              let location = event.location,
+              !location.isEmpty else {
+            print("❌ Cannot set up travel notification: Event missing start time or location")
+            return
+        }
+        
+        // Verify user is authenticated
+        guard let currentUser = Auth.auth().currentUser else {
+            print("❌ Cannot set up travel notification: User not authenticated")
+            return
+        }
+        
+        print("👤 Setting up travel notification for user: \(currentUser.uid)")
+        print("📅 Event: \(event.title), Location: \(location)")
+        
+        // Schedule a travel time check for this event
+        travelNotificationManager.scheduleTravelCheck(for: event)
+        
+        print("✅ Travel check scheduled for event: \(event.title)")
+    }
+    
+    func requestLocationPermission() {
+        let locationManager = CLLocationManager()
+        
+        // Check current authorization status
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            // Request permission
+            locationManager.requestWhenInUseAuthorization()
+            print("Requesting location permission")
+            
+        case .denied, .restricted:
+            // Show alert directing to settings
+            let alert = UIAlertController(
+                title: "Location Access Required",
+                message: "This app needs your location to calculate travel times to events. Please enable location access in Settings.",
+                preferredStyle: .alert
+            )
+            
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            alert.addAction(UIAlertAction(title: "Settings", style: .default) { _ in
+                if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(settingsURL)
+                }
+            })
+            
+            DispatchQueue.main.async {
+                self.present(alert, animated: true)
+            }
+            
+        case .authorizedWhenInUse:
+            // If we need "always" permission, request it
+            locationManager.requestAlwaysAuthorization()
+            print("Requesting 'always' location permission")
+            
+        case .authorizedAlways:
+            print("Location permission already granted")
+            
+        @unknown default:
+            print("Unknown location authorization status")
+        }
+    }
         
 
 }
