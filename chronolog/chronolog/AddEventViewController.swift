@@ -2,18 +2,28 @@ import UIKit
 import FirebaseFirestore
 import FirebaseAuth
 import Firebase
+import MapKit
 
-class AddEventViewController: UIViewController {
+class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
+    
     // Scroll View and Stack View
     @IBOutlet weak var scrollView: UIScrollView!
     @IBOutlet weak var stackView: UIStackView!
     
     // Duration Pickers Dictionary
     var durationPickers: [UIStackView: UIDatePicker] = [:]
+    
+    // Location search completer
+    private let searchCompleter = MKLocalSearchCompleter()
+    private var searchResults = [MKLocalSearchCompletion]()
+    private var locationResultsTableView: UITableView?
+    private var activeLocationTextField: UITextField?
 
     // Save Button
     let saveButton = UIButton(type: .system)
     let resetButton = UIButton(type: .system)
+    
+    private let travelNotificationManager = EventTravelNotificationManager()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -25,6 +35,12 @@ class AddEventViewController: UIViewController {
         setupScrollView()
         setupActivityDetailContainer()
         setupActionButtons()
+        
+        searchCompleter.delegate = self
+        searchCompleter.resultTypes = .address
+        
+        configureReturnKeysToDone()
+        _ = LocationManager.shared
     }
 
     // MARK: - Scroll View Setup
@@ -121,7 +137,6 @@ class AddEventViewController: UIViewController {
         container.addArrangedSubview(nameTextField)
         
         // Add UI Components
-//        addLocationField(to: container)
         addPrioritySegmentedControl(to: container)
         addAllDaySwitch(to: container)
         addDatePickers(to: container)
@@ -130,6 +145,7 @@ class AddEventViewController: UIViewController {
         addRecurrenceSelector(to: container, viewController: self)
         addAllowSplittingSwitch(to: container)
         addAllowOverlapSwitch(to: container)
+        addLocationField(to: container)
         addNoteTextField(to: container)
         
         // 1) Create the “Not sure how long?” button
@@ -268,10 +284,25 @@ class AddEventViewController: UIViewController {
     
     // Add Location Field
     func addLocationField(to container: UIStackView) {
+        let locationContainer = UIStackView()
+        locationContainer.axis = .vertical
+        locationContainer.spacing = 8
+        
+        let locationLabel = UILabel()
+        locationLabel.text = "Location"
+        locationLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        
         let locationTextField = UITextField()
         locationTextField.placeholder = "Enter location"
         locationTextField.borderStyle = .roundedRect
-        container.addArrangedSubview(locationTextField)
+        locationTextField.clearButtonMode = .whileEditing
+        locationTextField.delegate = self
+        locationTextField.addTarget(self, action: #selector(locationTextFieldDidChange(_:)), for: .editingChanged)
+        
+        locationContainer.addArrangedSubview(locationLabel)
+        locationContainer.addArrangedSubview(locationTextField)
+        
+        container.addArrangedSubview(locationContainer)
     }
 
     // Add Priority Segmented Control
@@ -815,6 +846,16 @@ class AddEventViewController: UIViewController {
         
         let descriptionText = noteField?.text ?? ""
         
+        // Get the location field
+        let locationContainer = container.arrangedSubviews
+            .compactMap { $0 as? UIStackView }
+            .first(where: { stack in
+                stack.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Location" }
+            })
+            
+        let locationField = locationContainer?.arrangedSubviews.last as? UITextField
+        let location = locationField?.text ?? ""
+        
         let priority: CustomEvent.Priority = {
             guard let index = priorityControl?.selectedSegmentIndex else { return .medium }
             switch index {
@@ -838,7 +879,8 @@ class AddEventViewController: UIViewController {
             allowSplit: allowSplit,
             allowOverlap: allowOverlap,
             priority: priority,
-            deadline: deadlineDate
+            deadline: deadlineDate,
+            location: location
         )
         return customEvent
     }
@@ -873,6 +915,7 @@ class AddEventViewController: UIViewController {
                 let allowSplit = data["allowSplit"] as? Bool ?? false
                 let allowOverlap = data["allowOverlap"] as? Bool ?? false
                 let deadlineTimestamp = data["deadline"] as? Timestamp
+                let location = data["location"] as? String
                 
                 // Convert priority string to enum.
                 let priorityString = data["priority"] as? String ?? "medium"
@@ -904,7 +947,8 @@ class AddEventViewController: UIViewController {
                     allowSplit: allowSplit,
                     allowOverlap: allowOverlap,
                     priority: priority,
-                    deadline: deadline
+                    deadline: deadline,
+                    location: location
                 )
                 events.append(event)
                 
@@ -922,6 +966,10 @@ class AddEventViewController: UIViewController {
         guard let newEvent = buildCustomEventFromInput() else {
             // An alert is already shown in the helper.
             return
+        }
+        
+        if let location = newEvent.location, !location.isEmpty {
+            requestLocationPermission()
         }
         
         // Fetch existing events from Firebase.
@@ -1055,7 +1103,8 @@ class AddEventViewController: UIViewController {
             "allowSplit": newEvent.allowSplit,
             "allowOverlap": newEvent.allowOverlap,
             "priority": newEvent.priority.rawValue,
-            "deadline": newEvent.deadline
+            "deadline": newEvent.deadline,
+            "location": newEvent.location
         ]
         
         let priorityString: String = {
@@ -1083,6 +1132,11 @@ class AddEventViewController: UIViewController {
                         isAllDay: newEvent.isAllDay,
                         priority: priorityString
                     )
+                    // Set up travel notification if location exists
+                    if let location = newEvent.location, !location.isEmpty {
+                        self.setupTravelNotification(for: newEvent)
+                    }
+                                    
                     self.resetForm()
                     self.promptToAddAnotherEvent()
                 }
@@ -1259,6 +1313,14 @@ class AddEventViewController: UIViewController {
             noteField.text = ""
         }
         
+        //Reset location
+        if let locationContainer = container.arrangedSubviews.first(where: {
+            ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Location" }) == true
+        }) as? UIStackView,
+            let locationField = locationContainer.arrangedSubviews.last as? UITextField {
+            locationField.text = ""
+        }
+        
         print("Form reset completed successfully")
     }
 
@@ -1284,5 +1346,238 @@ class AddEventViewController: UIViewController {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+    
+    func configureReturnKeysToDone() {
+        // Function to find and configure all text fields in the view hierarchy
+        func configureTextFields(in view: UIView) {
+            for subview in view.subviews {
+                if let textField = subview as? UITextField {
+                    // Change the return key type to "Done"
+                    textField.returnKeyType = .done
+                    
+                    // Set the delegate to handle the "Done" key press
+                    textField.delegate = self
+                }
+                
+                // Recursively check subviews
+                if !subview.subviews.isEmpty {
+                    configureTextFields(in: subview)
+                }
+            }
+        }
+        
+        // Start the recursive search from the main view
+        configureTextFields(in: self.view)
+    }
+    
+    @objc func locationTextFieldDidChange(_ textField: UITextField) {
+            guard let query = textField.text, !query.isEmpty else {
+                hideLocationResultsTableView()
+                return
+            }
+            
+            activeLocationTextField = textField
+            searchCompleter.queryFragment = query
+            
+            // Create table view if it doesn't exist
+            if locationResultsTableView == nil {
+                createLocationResultsTableView(for: textField)
+            } else {
+                updateLocationResultsTableViewFrame(for: textField)
+            }
+        }
+    
+    func createLocationResultsTableView(for textField: UITextField) {
+            let tableView = UITableView()
+            tableView.delegate = self
+            tableView.dataSource = self
+            tableView.layer.borderWidth = 1
+            tableView.layer.borderColor = UIColor.lightGray.cgColor
+            tableView.layer.cornerRadius = 5
+            tableView.clipsToBounds = true
+            tableView.backgroundColor = .white
+            
+            // Convert text field's frame to window's coordinate system
+            guard let textFieldSuperview = textField.superview else { return }
+            let convertedFrame = textFieldSuperview.convert(textField.frame, to: view)
+            
+            let tableViewY = convertedFrame.origin.y + convertedFrame.size.height + 5
+            let tableViewFrame = CGRect(
+                x: convertedFrame.origin.x,
+                y: tableViewY,
+                width: convertedFrame.size.width,
+                height: min(44 * 5, view.frame.height - tableViewY - 100) // Max 5 rows or available space
+            )
+            
+            tableView.frame = tableViewFrame
+            
+            view.addSubview(tableView)
+            locationResultsTableView = tableView
+        }
+        
+        func updateLocationResultsTableViewFrame(for textField: UITextField) {
+            guard let tableView = locationResultsTableView,
+                  let textFieldSuperview = textField.superview else { return }
+            
+            let convertedFrame = textFieldSuperview.convert(textField.frame, to: view)
+            
+            let tableViewY = convertedFrame.origin.y + convertedFrame.size.height + 5
+            let tableViewFrame = CGRect(
+                x: convertedFrame.origin.x,
+                y: tableViewY,
+                width: convertedFrame.size.width,
+                height: min(44 * 5, view.frame.height - tableViewY - 100)
+            )
+            
+            tableView.frame = tableViewFrame
+            tableView.isHidden = false
+        }
+        
+        func hideLocationResultsTableView() {
+            locationResultsTableView?.isHidden = true
+            searchResults = []
+            locationResultsTableView?.reloadData()
+        }
+        
+        // MARK: - MKLocalSearchCompleterDelegate
+        
+        func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+            searchResults = completer.results
+            locationResultsTableView?.reloadData()
+            locationResultsTableView?.isHidden = false
+        }
+        
+        func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+            print("Location search completer error: \(error.localizedDescription)")
+        }
+        
+        // MARK: - UITextField Delegate
+        
+        func textFieldDidBeginEditing(_ textField: UITextField) {
+            // Only show suggestions for location field
+            if textField.placeholder == "Enter location" {
+                activeLocationTextField = textField
+                if let query = textField.text, !query.isEmpty {
+                    searchCompleter.queryFragment = query
+                    if locationResultsTableView == nil {
+                        createLocationResultsTableView(for: textField)
+                    } else {
+                        updateLocationResultsTableViewFrame(for: textField)
+                    }
+                }
+            }
+        }
+        
+        func textFieldDidEndEditing(_ textField: UITextField) {
+            // Delay hiding to allow time for selection
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                self?.hideLocationResultsTableView()
+            }
+        }
+    
+    func setupTravelNotification(for event: CustomEvent) {
+        // Ensure the event has required properties
+        guard event.startTime != nil,
+              let location = event.location,
+              !location.isEmpty else {
+            print("❌ Cannot set up travel notification: Event missing start time or location")
+            return
+        }
+        
+        // Verify user is authenticated
+        guard let currentUser = Auth.auth().currentUser else {
+            print("❌ Cannot set up travel notification: User not authenticated")
+            return
+        }
+        
+        print("👤 Setting up travel notification for user: \(currentUser.uid)")
+        print("📅 Event: \(event.title), Location: \(location)")
+        
+        // Schedule a travel time check for this event
+        travelNotificationManager.scheduleTravelCheck(for: event)
+        
+        print("✅ Travel check scheduled for event: \(event.title)")
+    }
+    
+    func requestLocationPermission() {
+        let locationManager = CLLocationManager()
+        
+        // Check current authorization status
+        switch locationManager.authorizationStatus {
+        case .notDetermined:
+            // Request permission
+            locationManager.requestWhenInUseAuthorization()
+            print("Requesting location permission")
+            
+        case .denied, .restricted:
+            // Show alert directing to settings
+            let alert = UIAlertController(
+                title: "Location Access Required",
+                message: "This app needs your location to calculate travel times to events. Please enable location access in Settings.",
+                preferredStyle: .alert
+            )
+            
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            alert.addAction(UIAlertAction(title: "Settings", style: .default) { _ in
+                if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(settingsURL)
+                }
+            })
+            
+            DispatchQueue.main.async {
+                self.present(alert, animated: true)
+            }
+            
+        case .authorizedWhenInUse:
+            // If we need "always" permission, request it
+            locationManager.requestAlwaysAuthorization()
+            print("Requesting 'always' location permission")
+            
+        case .authorizedAlways:
+            print("Location permission already granted")
+            
+        @unknown default:
+            print("Unknown location authorization status")
+        }
+    }
+        
+
+}
+
+extension AddEventViewController: UITableViewDelegate, UITableViewDataSource {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return searchResults.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "LocationCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "LocationCell")
+        
+        let result = searchResults[indexPath.row]
+        cell.textLabel?.text = result.title
+        cell.detailTextLabel?.text = result.subtitle
+        cell.detailTextLabel?.textColor = .gray
+        
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 44
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let result = searchResults[indexPath.row]
+        let fullAddress = "\(result.title), \(result.subtitle)"
+        activeLocationTextField?.text = fullAddress
+        hideLocationResultsTableView()
+        activeLocationTextField?.resignFirstResponder()
+    }
+}
+
+extension AddEventViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        // Dismiss the keyboard when Done is pressed
+        textField.resignFirstResponder()
+        return true
     }
 }

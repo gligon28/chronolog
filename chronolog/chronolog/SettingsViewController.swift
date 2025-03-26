@@ -107,29 +107,6 @@ class SettingsViewController: UITableViewController {
             present(alert, animated: true)
         }
     }
-    
-//    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-//            tableView.deselectRow(at: indexPath, animated: true)
-//            
-//            if indexPath.section == 0 {
-//                let progressVC = ProgressTrackingViewController()
-//                self.navigationController?.pushViewController(progressVC, animated: true)
-//            } else if indexPath.section == 1 {
-//                // Show confirmation alert before signing out
-//                let alert = UIAlertController(
-//                    title: "Sign Out",
-//                    message: "Are you sure you want to sign out?",
-//                    preferredStyle: .alert
-//                )
-//                
-//                alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-//                alert.addAction(UIAlertAction(title: "Sign Out", style: .destructive) { [weak self] _ in
-//                    self?.handleSignOut()
-//                })
-//                
-//                present(alert, animated: true)
-//            }
-//        }
         
         // MARK: - Navigation
         
@@ -155,9 +132,8 @@ class SettingsViewController: UITableViewController {
             do {
                 try Auth.auth().signOut()
                 activeUser = nil
-                
-                // Navigate to login screen programmatically
-                navigateToLogin()
+                print("navigating to login")
+                self.performSegue(withIdentifier: "goToHome", sender: self)
             } catch let error {
                 print("Error signing out: \(error.localizedDescription)")
                 // Show error alert
@@ -170,7 +146,7 @@ class SettingsViewController: UITableViewController {
                 self.present(alert, animated: true)
             }
         }
-        
+  
     func navigateToLogin() {
         if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate,
            let window = sceneDelegate.window {
