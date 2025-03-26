@@ -14,6 +14,7 @@ struct CustomEvent {
         case high = "High"
     }
     
+    var docID: String?
     var title: String
     var date: Date?
     var startTime: Date?

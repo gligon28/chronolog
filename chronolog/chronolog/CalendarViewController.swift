@@ -160,7 +160,7 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                 let date = dateTimestamp?.dateValue()
                 let description = data["description"] as? String ?? ""
                 
-                let event = CustomEvent(
+                var event = CustomEvent(
                     title: title,
                     date: date ?? startTime ?? Date(),  // Provide a default value
                     startTime: startTime,
@@ -175,6 +175,7 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
                     priority: priority,
                     deadline: deadline
                 )
+                event.docID = document.documentID
                 events.append(event)
                 
                 print("Fetched event: \(title) from \(String(describing: startTime)) to \(String(describing: endTime))")
@@ -436,13 +437,30 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         // Set the attributed message
         alert.setValue(attributedString, forKey: "attributedMessage")
         
-        alert.addAction(UIAlertAction(title: "Close", style: .default))
+        alert.addAction(UIAlertAction(title: "Modify", style: .default, handler: { _ in
+            self.showModifyEventScreen(event)
+        }))
         alert.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { _ in
             self.confirmDeleteEvent(event)
         }))
+        alert.addAction(UIAlertAction(title: "Close", style: .default))
         
         present(alert, animated: true)
     }
+    
+    private func showModifyEventScreen(_ event: CustomEvent) {
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        if let addEventVC = storyboard.instantiateViewController(withIdentifier: "AddEventViewController") as? AddEventViewController {
+            
+            // Tell it we’re editing
+            addEventVC.isEditMode = true
+            addEventVC.existingEvent = event
+            
+            // Optionally present modally or push
+            navigationController?.pushViewController(addEventVC, animated: true)
+        }
+    }
+
     
     private func confirmDeleteEvent(_ event: CustomEvent) {
         let confirmAlert = UIAlertController(

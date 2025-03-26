@@ -9,6 +9,8 @@ class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
     // Scroll View and Stack View
     @IBOutlet weak var scrollView: UIScrollView!
     @IBOutlet weak var stackView: UIStackView!
+    var isEditMode: Bool = false
+    var existingEvent: CustomEvent?
     
     // Duration Pickers Dictionary
     var durationPickers: [UIStackView: UIDatePicker] = [:]
@@ -42,6 +44,140 @@ class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
         configureReturnKeysToDone()
         _ = LocationManager.shared
     }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if isEditMode {
+            // Change the button text
+            saveButton.setTitle("Confirm Changes", for: .normal)
+            
+            // Pre-fill the fields
+            if let event = existingEvent {
+                populateFields(with: event)
+            }
+        } else {
+            saveButton.setTitle("Save Event", for: .normal)
+        }
+    }
+    
+    func populateFields(with event: CustomEvent) {
+        guard let container = stackView.arrangedSubviews.first as? UIStackView else { return }
+        
+        // Title
+        if let titleField = container.arrangedSubviews.first(where: { $0 is UITextField }) as? UITextField {
+            titleField.text = event.title
+        }
+        
+        // All-day switch
+        if let allDayContainer = container.arrangedSubviews.first(where: {
+            ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "All-day" }) == true
+        }) as? UIStackView,
+           let allDaySwitch = allDayContainer.arrangedSubviews.compactMap({ $0 as? UISwitch }).first {
+            allDaySwitch.isOn = event.isAllDay
+        }
+        
+        // Start/End date pickers
+        if let startPicker = findDatePicker(in: container, withLabel: "Starts"),
+           let endPicker = findDatePicker(in: container, withLabel: "Ends"),
+           let startTime = event.startTime,
+           let endTime = event.endTime {
+            startPicker.date = startTime
+            endPicker.date = endTime
+            endPicker.minimumDate = startTime
+        }
+        
+        // Deadline
+        if let deadlineSwitchContainer = container.arrangedSubviews.first(where: {
+            ($0 as? UIStackView)?.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add Deadline" } == true
+        }) as? UIStackView,
+           let deadlineSwitch = deadlineSwitchContainer.arrangedSubviews.compactMap({ $0 as? UISwitch }).first,
+           let deadlineDateContainer = container.arrangedSubviews.first(where: { $0.tag == 100 }) as? UIStackView,
+           let deadlineDatePicker = deadlineDateContainer.arrangedSubviews.last as? UIDatePicker {
+            
+            if let deadline = event.deadline {
+                deadlineSwitch.isOn = true
+                deadlineDateContainer.isHidden = false
+                deadlineDatePicker.date = deadline
+            } else {
+                deadlineSwitch.isOn = false
+                deadlineDateContainer.isHidden = true
+            }
+        }
+        
+        // Priority
+        if let priorityContainer = container.arrangedSubviews.first(where: {
+            ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Priority" }) == true
+        }) as? UIStackView,
+           let priorityControl = priorityContainer.arrangedSubviews.compactMap({ $0 as? UISegmentedControl }).first {
+            switch event.priority {
+            case .high:   priorityControl.selectedSegmentIndex = 0
+            case .medium: priorityControl.selectedSegmentIndex = 1
+            case .low:    priorityControl.selectedSegmentIndex = 2
+            }
+        }
+        
+        // Duration
+        // If the user had a specific duration, you can decide whether to flip on the "Add Duration" switch
+        if let durationContainer = container.arrangedSubviews.first(where: {
+            ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Add Duration" }) == true
+        }) as? UIStackView,
+           let durationSwitch = durationContainer.arrangedSubviews.compactMap({ $0 as? UISwitch }).first,
+           let durationPicker = durationPickers[container] {
+            
+            // Compare event.duration to (endTime - startTime)
+            let actualSeconds = event.endTime?.timeIntervalSince(event.startTime ?? event.endTime!) ?? 0
+            // If they are close, maybe user didn't set an explicit "duration"
+            // Otherwise we set the switch to on
+            let difference = abs(Double(event.duration) - actualSeconds)
+            
+            if difference < 5.0 {
+                // durations basically match, maybe the user didn't specify
+                durationSwitch.isOn = false
+                durationPicker.isHidden = true
+            } else {
+                durationSwitch.isOn = true
+                durationPicker.isHidden = false
+                durationPicker.countDownDuration = TimeInterval(event.duration)
+            }
+        }
+        
+        // Overlap / Splitting
+        if let overlapContainer = container.arrangedSubviews.first(where: {
+            ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Allow Overlap" }) == true
+        }) as? UIStackView,
+           let overlapSwitch = overlapContainer.arrangedSubviews.compactMap({ $0 as? UISwitch }).first {
+            overlapSwitch.isOn = event.allowOverlap
+        }
+        
+        if let splittingContainer = container.arrangedSubviews.first(where: {
+            ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Allow Splitting" }) == true
+        }) as? UIStackView,
+           let splittingSwitch = splittingContainer.arrangedSubviews.compactMap({ $0 as? UISwitch }).first {
+            splittingSwitch.isOn = event.allowSplit
+        }
+        
+        // Location
+        if let locationContainer = container.arrangedSubviews.first(where: {
+            ($0 as? UIStackView)?.arrangedSubviews.contains(where: { ($0 as? UILabel)?.text == "Location" }) == true
+        }) as? UIStackView,
+           let locationField = locationContainer.arrangedSubviews.last as? UITextField,
+           let locationValue = event.location {
+            locationField.text = locationValue
+        }
+        
+        // Note
+        if let noteContainer = container.arrangedSubviews.first(where: { subview in
+            if let sv = subview as? UIStackView {
+                return sv.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add a Note" }
+            }
+            return false
+        }) as? UIStackView,
+           let noteField = noteContainer.arrangedSubviews.last as? UITextField,
+           let firstNote = event.description.first {
+            noteField.text = firstNote
+        }
+    }
+
 
     // MARK: - Scroll View Setup
     func setupScrollView() {
@@ -962,80 +1098,83 @@ class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
     @objc func saveEvent() {
         guard validateEventData() else { return }
         
-        // Build the new event using your helper.
-        guard let newEvent = buildCustomEventFromInput() else {
-            // An alert is already shown in the helper.
+        // Build the new event from the input fields
+        guard let updatedEvent = buildCustomEventFromInput() else {
+            // An alert is already shown in the helper if missing fields
             return
         }
         
-        if let location = newEvent.location, !location.isEmpty {
-            requestLocationPermission()
-        }
-        
-        // Fetch existing events from Firebase.
-        fetchExistingEvents { [weak self] existingEvents in
-            guard let self = self else { return }
-            if self.hasConflict(newEvent: newEvent, existingEvents: existingEvents) {
-                print("Conflict detected. Calling AI conflict resolver...")
-                let hud = self.showConflictResolutionHUD()
-                let openAIClient = OpenAIAPIClient(apiKey: Config.openAIToken)
-                let optimizer = ScheduleOptimizer(openAIClient: openAIClient)
-                
-                Task {
-                    do {
-                        // Our resolver now returns candidate solutions directly.
-                        let candidateSolutions = try await optimizer.resolveConflicts(existingEvents: existingEvents, newEvent: newEvent)
-                        
-                        // Remove duplicates.
-                        // We assume that each candidate solution contains an event matching the new event's title.
-                        var uniqueCandidates: [[CustomEvent]] = []
-                        var seenKeys = Set<String>()
-                        let dateFormatter = DateFormatter()
-                        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ" // ISO format for comparison
-                        
-                        for candidate in candidateSolutions {
-                            if let candidateEvent = candidate.first(where: { $0.title == newEvent.title }),
-                               let startTime = candidateEvent.startTime,
-                               let endTime = candidateEvent.endTime {
-                                let key = "\(dateFormatter.string(from: startTime))-\(dateFormatter.string(from: endTime))"
-                                if !seenKeys.contains(key) {
-                                    uniqueCandidates.append(candidate)
-                                    seenKeys.insert(key)
+        // If we are editing an existing event
+        if isEditMode {
+            guard let docID = existingEvent?.docID else {
+                showAlert(title: "Error", message: "No document ID found for update.")
+                return
+            }
+            // Update the existing doc in Firestore
+            updateExistingEventInFirebase(docID: docID, updatedEvent: updatedEvent)
+            
+        } else {
+            // Normal "add event" flow (with conflict check, etc.)
+            fetchExistingEvents { [weak self] existingEvents in
+                guard let self = self else { return }
+                if self.hasConflict(newEvent: updatedEvent, existingEvents: existingEvents) {
+                    print("Conflict detected. Calling AI conflict resolver...")
+                    let hud = self.showConflictResolutionHUD()
+                    let openAIClient = OpenAIAPIClient(apiKey: Config.openAIToken)
+                    let optimizer = ScheduleOptimizer(openAIClient: openAIClient)
+                    
+                    Task {
+                        do {
+                            let candidateSolutions = try await optimizer.resolveConflicts(existingEvents: existingEvents, newEvent: updatedEvent)
+                            
+                            var uniqueCandidates: [[CustomEvent]] = []
+                            var seenKeys = Set<String>()
+                            let dateFormatter = DateFormatter()
+                            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+                            
+                            for candidate in candidateSolutions {
+                                if let candidateEvent = candidate.first(where: { $0.title == updatedEvent.title }),
+                                   let startTime = candidateEvent.startTime,
+                                   let endTime = candidateEvent.endTime {
+                                    let key = "\(dateFormatter.string(from: startTime))-\(dateFormatter.string(from: endTime))"
+                                    if !seenKeys.contains(key) {
+                                        uniqueCandidates.append(candidate)
+                                        seenKeys.insert(key)
+                                    }
                                 }
                             }
-                        }
-                        
-                        await MainActor.run {
-                            hud.dismiss(animated: true, completion: {
-                                if uniqueCandidates.isEmpty {
-                                    self.showAlert(title: "Error", message: "No valid candidate solutions were returned.")
-                                } else {
-                                    self.presentResolvedSchedule(uniqueCandidates, newEvent: newEvent, conflictingEvents: existingEvents.filter {
-                                        guard let newStart = newEvent.startTime, let newEnd = newEvent.endTime,
-                                              let eventStart = $0.startTime, let eventEnd = $0.endTime else { return false }
-                                        return newStart < eventEnd && newEnd > eventStart
-                                    })
-                                }
-                            })
-                        }
-                    } catch {
-                        await MainActor.run {
-                            hud.dismiss(animated: true, completion: {
-                                self.showAlert(title: "Resolution Error", message: "Failed to resolve conflicts: \(error.localizedDescription)")
-                            })
+                            
+                            await MainActor.run {
+                                hud.dismiss(animated: true, completion: {
+                                    if uniqueCandidates.isEmpty {
+                                        self.showAlert(title: "Error", message: "No valid candidate solutions were returned.")
+                                    } else {
+                                        self.presentResolvedSchedule(uniqueCandidates, newEvent: updatedEvent, conflictingEvents: existingEvents.filter {
+                                            guard let newStart = updatedEvent.startTime, let newEnd = updatedEvent.endTime,
+                                                  let eventStart = $0.startTime, let eventEnd = $0.endTime else { return false }
+                                            return newStart < eventEnd && newEnd > eventStart
+                                        })
+                                    }
+                                })
+                            }
+                        } catch {
+                            await MainActor.run {
+                                hud.dismiss(animated: true, completion: {
+                                    self.showAlert(title: "Resolution Error", message: "Failed to resolve conflicts: \(error.localizedDescription)")
+                                })
+                            }
                         }
                     }
-                }
-            } else {
-                // No conflict: save directly.
-                DispatchQueue.main.async {
-                    self.saveToFirebase(newEvent: newEvent)
-                    self.promptToAddAnotherEvent()
+                } else {
+                    // No conflict: Save directly
+                    DispatchQueue.main.async {
+                        self.saveToFirebase(newEvent: updatedEvent)
+                        self.promptToAddAnotherEvent()
+                    }
                 }
             }
         }
     }
-
     
     func hasConflict(newEvent: CustomEvent, existingEvents: [CustomEvent]) -> Bool {
         guard let newStart = newEvent.startTime, let newEnd = newEvent.endTime else {
@@ -1143,6 +1282,50 @@ class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
             }
         }
     }
+    
+    func updateExistingEventInFirebase(docID: String, updatedEvent: CustomEvent) {
+        guard let userID = Auth.auth().currentUser?.uid else {
+            print("Error: User not authenticated")
+            return
+        }
+        let db = Firestore.firestore()
+
+        // The same dictionary as your “saveToFirebase,” but you do “.document(docID).setData(..., merge: true)”
+        let eventData: [String: Any] = [
+            "title": updatedEvent.title,
+            "date": updatedEvent.date ?? Date(),
+            "startTime": updatedEvent.startTime ?? Date(),
+            "endTime": updatedEvent.endTime ?? Date(),
+            "duration": updatedEvent.duration,
+            "description": updatedEvent.description.joined(separator: "\n"),
+            "isRecurring": updatedEvent.isRecurring,
+            "isAllDay": updatedEvent.isAllDay,
+            "allowSplit": updatedEvent.allowSplit,
+            "allowOverlap": updatedEvent.allowOverlap,
+            "priority": updatedEvent.priority.rawValue,
+            "deadline": updatedEvent.deadline ?? NSNull(),
+            "location": updatedEvent.location ?? ""
+        ]
+
+        db.collection("userEvents").document(userID).collection("events")
+          .document(docID)
+          .setData(eventData, merge: true) { [weak self] error in
+              guard let self = self else { return }
+              if let error = error {
+                  print("Error updating event: \(error)")
+                  DispatchQueue.main.async {
+                      self.showAlert(title: "Error", message: "Failed to update event: \(error.localizedDescription)")
+                  }
+              } else {
+                  print("Event updated successfully")
+                  DispatchQueue.main.async {
+                      // Possibly pop or dismiss
+                      self.navigationController?.popViewController(animated: true)
+                  }
+              }
+          }
+    }
+
     
     /// Presents an alert with an activity indicator to show progress.
     /// Returns the presented alert so you can dismiss it later.

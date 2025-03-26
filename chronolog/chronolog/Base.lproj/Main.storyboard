@@ -368,7 +368,7 @@
         <!--Add Event/Task-->
         <scene sceneID="PeU-kG-ziR">
             <objects>
-                <viewController title="Add Event/Task" modalPresentationStyle="fullScreen" id="0qz-Gh-hkh" customClass="AddEventViewController" customModule="chronolog" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="AddEventViewController" title="Add Event/Task" modalPresentationStyle="fullScreen" useStoryboardIdentifierAsRestorationIdentifier="YES" id="0qz-Gh-hkh" customClass="AddEventViewController" customModule="chronolog" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="WZt-te-iKd">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="842"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
