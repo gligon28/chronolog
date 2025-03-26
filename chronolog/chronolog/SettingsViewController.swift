@@ -171,38 +171,13 @@ class SettingsViewController: UITableViewController {
             }
         }
         
-        func navigateToLogin() {
-            // Get reference to the login view controller from storyboard
-            if let loginVC = self.storyboard?.instantiateViewController(withIdentifier: "LoginViewController") {
-                // For full screen presentation
-                loginVC.modalPresentationStyle = .fullScreen
-                
-                // For apps using a navigation controller
-                if let navigationController = self.navigationController {
-                    // Option 1: Pop to root if login is the root
-                    navigationController.popToRootViewController(animated: true)
-                    
-                    // Option 2: Set the view controllers array to just include login
-                    // navigationController.setViewControllers([loginVC], animated: true)
-                } else {
-                    // If no navigation controller, present modally
-                    self.present(loginVC, animated: true, completion: nil)
-                }
-            } else {
-                // Fallback if storyboard ID is not found
-                // This assumes you have a window reference (iOS 13+ uses scenes)
-                if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate,
-                   let window = sceneDelegate.window {
-                    // If using a navigation controller as root
-                    if let navController = window.rootViewController as? UINavigationController {
-                        navController.popToRootViewController(animated: true)
-                    } else {
-                        // Reset to the app's initial view controller
-                        let storyboard = UIStoryboard(name: "Main", bundle: nil)
-                        window.rootViewController = storyboard.instantiateInitialViewController()
-                        window.makeKeyAndVisible()
-                    }
-                }
-            }
+    func navigateToLogin() {
+        if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate,
+           let window = sceneDelegate.window {
+            let storyboard = UIStoryboard(name: "Main", bundle: nil)
+            let loginVC = storyboard.instantiateViewController(withIdentifier: "LoginViewController")
+            window.rootViewController = loginVC
+            window.makeKeyAndVisible()
         }
     }
+}

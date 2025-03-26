@@ -155,7 +155,17 @@ class AddEventViewController: UIViewController {
             return
         }
 
-        // 2) Show a loading alert
+        // 2) Also get the notes text (if any)
+        let noteContainer = container.arrangedSubviews.first(where: { subview in
+            if let sv = subview as? UIStackView {
+                return sv.arrangedSubviews.contains { ($0 as? UILabel)?.text == "Add a Note" }
+            }
+            return false
+        }) as? UIStackView
+        let noteField = noteContainer?.arrangedSubviews.last as? UITextField
+        let notes = noteField?.text ?? ""
+
+        // 3) Show a loading alert
         let loadingAlert = UIAlertController(title: "Estimating Duration", message: "Please wait...", preferredStyle: .alert)
         let indicator = UIActivityIndicatorView(style: .medium)
         indicator.translatesAutoresizingMaskIntoConstraints = false
@@ -167,15 +177,14 @@ class AddEventViewController: UIViewController {
         ])
         present(loadingAlert, animated: true)
 
-        // 3) Call GPT-4
-        let openAIClient = OpenAIAPIClient(apiKey: Config.openAIToken)  // reuse or create new
+        // 4) Call GPT-4 with both title + notes
+        let openAIClient = OpenAIAPIClient(apiKey: Config.openAIToken)
         Task {
             do {
-                let minutes = try await openAIClient.getDurationEstimate(forTitle: eventTitle)
-                // Move back to main thread
+                let minutes = try await openAIClient.getDurationEstimate(forTitle: eventTitle, notes: notes)
                 await MainActor.run {
                     loadingAlert.dismiss(animated: true) {
-                        // 4) Show a pop-up with a countdown date picker
+                        // Show the pop-up with a countdown date picker
                         self.showEstimatedDurationPopup(minutes: minutes)
                     }
                 }
@@ -407,6 +416,7 @@ class AddEventViewController: UIViewController {
         let noteTextField = UITextField()
         noteTextField.placeholder = "Enter note"
         noteTextField.borderStyle = .roundedRect
+        noteTextField.clearButtonMode = .whileEditing
         noteContainer.addArrangedSubview(noteLabel)
         noteContainer.addArrangedSubview(noteTextField)
         container.addArrangedSubview(noteContainer)
