@@ -147,4 +147,14 @@ class SettingsViewController: UITableViewController {
             }
         }
         
+    
+    func navigateToLogin() {
+        if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate,
+           let window = sceneDelegate.window {
+            let storyboard = UIStoryboard(name: "Main", bundle: nil)
+            let loginVC = storyboard.instantiateViewController(withIdentifier: "LoginViewController")
+            window.rootViewController = loginVC
+            window.makeKeyAndVisible()
+        }
     }
+}

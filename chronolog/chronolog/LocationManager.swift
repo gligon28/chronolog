@@ -49,8 +49,8 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
             return
         }
         
-        // Otherwise, request a fresh location
-        let locationCompletionHandler: ((CLLocation?) -> Void) = completion
+        // Store the completion handler for later use
+        let locationCompletionHandler = completion
         
         // Set up a one-time location request
         locationManager.requestLocation() // This will call didUpdateLocations once
