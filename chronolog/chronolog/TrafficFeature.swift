@@ -152,46 +152,67 @@ class EventTravelNotificationManager {
     // Buffer time to add to travel duration (5 minutes)
     private let bufferTime: TimeInterval = 5 * 60
     
-    // Schedule a travel time notification for an event
     func scheduleTravelCheck(for event: CustomEvent) {
+        print("⏱️ Started scheduleTravelCheck for event: \(event.title)")
+        
         // Verify the event has required properties
         guard let startTime = event.startTime,
               let location = event.location,
               !location.isEmpty else {
-            print("Cannot schedule travel check: Event missing start time or location")
+            print("❌ Cannot schedule travel check: Event missing start time or location")
             return
         }
+        
+        print("📍 Event location: \(location)")
         
         // Calculate when to check travel time (1 hour before event)
         let checkTime = startTime.addingTimeInterval(-notificationThreshold)
-
+        let now = Date()
+        
+        print("⏰ Current time: \(now)")
+        print("🗓️ Event start time: \(startTime)")
+        print("🔔 Check time (1 hour before): \(checkTime)")
+        print("❓ Is check time <= now? \(checkTime <= now)")
+        
         // Only do immediate check if check time is in the past
-        if checkTime <= Date() {
+        if checkTime <= now {
+            print("⚡ Check time is now or in the past, performing immediate check")
             checkTravelTimeNow(for: event)
             return
         }
-        let now = Date()
-        print("Current time: \(now)")
-        print("Event start time: \(startTime)")
-        print("Check time (1 hour before): \(checkTime)")
-        print("Is check time <= now? \(checkTime <= now)")
         
         // Generate a unique ID for this travel check
         let checkId = generateCheckId(for: event)
+        print("🔑 Generated check ID: \(checkId)")
         
         // Store the event info in Firebase for retrieval when notification triggers
         storeEventForTravelCheck(id: checkId, event: event)
         
+        // Create and schedule the notification
+        scheduleBackgroundCheck(id: checkId, event: event, checkTime: checkTime)
+        
+        print("✅ Finished scheduleTravelCheck for event: \(event.title)")
+    }
+
+    // New method to break out the notification scheduling logic
+    private func scheduleBackgroundCheck(id: String, event: CustomEvent, checkTime: Date) {
+        print("📱 Setting up background check notification for: \(event.title) at \(checkTime)")
+        
+        guard let location = event.location, let startTime = event.startTime else {
+            print("❌ Missing required event properties for notification")
+            return
+        }
+        
         // Create the notification content
         let content = UNMutableNotificationContent()
-        content.title = "Travel Check" // This won't be seen by user
-        content.body = "Checking travel time for \(event.title)" // This won't be seen by user
-        content.sound = nil // Silent notification
+        content.title = "Travel Check"
+        content.body = "Checking travel time for \(event.title)"
+        content.sound = nil
         content.categoryIdentifier = "TRAVEL_CHECK"
         
         // Store the check ID in the notification
         content.userInfo = [
-            "checkId": checkId,
+            "checkId": id,
             "eventTitle": event.title,
             "eventLocation": location,
             "eventStartTime": startTime.timeIntervalSince1970
@@ -206,7 +227,7 @@ class EventTravelNotificationManager {
         
         // Create request
         let request = UNNotificationRequest(
-            identifier: "travelcheck-\(checkId)",
+            identifier: "travelcheck-\(id)",
             content: content,
             trigger: trigger
         )
@@ -214,9 +235,9 @@ class EventTravelNotificationManager {
         // Schedule notification
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Error scheduling travel check notification: \(error)")
+                print("❌ Error scheduling travel check notification: \(error)")
             } else {
-                print("Successfully scheduled travel check for: \(event.title) at \(checkTime)")
+                print("✅ Successfully scheduled travel check for: \(event.title) at \(checkTime)")
             }
         }
     }
@@ -238,9 +259,6 @@ class EventTravelNotificationManager {
         print("📅 Event: \(event.title) at \(startTime)")
         
         let db = Firestore.firestore()
-        let path = "userEvents/\(userID)/travelChecks/\(id)"
-        print("📝 Attempting to write to path: \(path)")
-        
         let travelCheckData: [String: Any] = [
             "title": event.title,
             "startTime": Timestamp(date: startTime),
