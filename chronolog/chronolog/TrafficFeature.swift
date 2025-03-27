@@ -150,7 +150,7 @@ class EventTravelNotificationManager {
     private let notificationThreshold: TimeInterval = 60 * 60
     
     // Buffer time to add to travel duration (5 minutes)
-    private let bufferTime: TimeInterval = 5 * 60
+    private let bufferTime: TimeInterval = 0
     
     func scheduleTravelCheck(for event: CustomEvent) {
         print("⏱️ Started scheduleTravelCheck for event: \(event.title)")
@@ -218,12 +218,17 @@ class EventTravelNotificationManager {
             "eventStartTime": startTime.timeIntervalSince1970
         ]
         
-        // Create trigger for checkTime
-        let triggerDate = Calendar.current.dateComponents(
-            [.year, .month, .day, .hour, .minute, .second],
-            from: checkTime
+        // Calculate time interval until the check should occur
+        let now = Date()
+        let timeInterval = max(1, checkTime.timeIntervalSince(now))
+        
+        print("⏰ Time interval for background check: \(Int(timeInterval)) seconds (\(Int(timeInterval/60)) minutes)")
+        
+        // Use a time interval trigger instead of calendar trigger
+        let trigger = UNTimeIntervalNotificationTrigger(
+            timeInterval: timeInterval,
+            repeats: false
         )
-        let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDate, repeats: false)
         
         // Create request
         let request = UNNotificationRequest(
@@ -235,9 +240,9 @@ class EventTravelNotificationManager {
         // Schedule notification
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("❌ Error scheduling travel check notification: \(error)")
+                print("❌ Error scheduling travel check notification: \(error.localizedDescription)")
             } else {
-                print("✅ Successfully scheduled travel check for: \(event.title) at \(checkTime)")
+                print("✅ Successfully scheduled travel check for: \(event.title) to fire at \(checkTime)")
             }
         }
     }
@@ -347,39 +352,62 @@ class EventTravelNotificationManager {
     }
     
     // Schedule the "time to leave" notification
+    // Schedule the "time to leave" notification
     private func scheduleLeaveNotification(event: CustomEvent, travelResult: TravelTimeResult, leaveTime: Date) {
-        let timeUntilLeave = leaveTime.timeIntervalSinceNow
+        let now = Date()
+        let timeUntilLeave = leaveTime.timeIntervalSince(now)
+        
+        print("🕒 Current time: \(now)")
+        print("🚶‍♂️ Event: \(event.title)")
+        print("🗓️ Event time: \(event.startTime ?? Date())")
+        print("⏱️ Travel time: \(travelResult.formattedTravelTime)")
+        print("🚀 Calculated leave time: \(leaveTime)")
+        print("⏳ Time until leave: \(Int(timeUntilLeave/60)) minutes")
         
         // If user needs to leave in less than 5 minutes, send immediate notification
         if timeUntilLeave < 300 {
+            print("⚡ Less than 5 minutes until leave time - sending immediate alert")
             sendImmediateLeaveAlert(event: event, travelResult: travelResult, leaveBy: leaveTime)
             return
         }
         
         // Otherwise, schedule a notification for the leave time
         let content = UNMutableNotificationContent()
-        content.title = "Time to Leave"
-        content.body = "Leave now for \(event.title). It will take \(travelResult.formattedTravelTime) to arrive."
+        content.title = "Prepare to Leave"
+
+        // Format the leave time
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        let formattedLeaveTime = formatter.string(from: leaveTime)
+        content.body = "Leave for \(event.title) at \(formattedLeaveTime). It will take \(travelResult.formattedTravelTime) to arrive."
         content.sound = .default
         
         // Schedule for 15 minutes before leave time to give user preparation time
         let notificationTime = leaveTime.addingTimeInterval(-15 * 60)
-        let timeComponents = Calendar.current.dateComponents(
-            [.year, .month, .day, .hour, .minute, .second],
-            from: notificationTime
+        print("🔔 Scheduling notification for: \(notificationTime)")
+        
+        // Use a time interval trigger instead of calendar trigger
+        // This is more reliable for future events
+        let timeInterval = max(1, notificationTime.timeIntervalSince(now))
+        print("⏰ Time interval for notification: \(Int(timeInterval)) seconds")
+        
+        let trigger = UNTimeIntervalNotificationTrigger(
+            timeInterval: timeInterval,
+            repeats: false
         )
         
-        let trigger = UNCalendarNotificationTrigger(dateMatching: timeComponents, repeats: false)
-        
+        let identifier = "leave-\(event.title)-\(UUID().uuidString)"
         let request = UNNotificationRequest(
-            identifier: "leave-\(event.title)-\(UUID().uuidString)",
+            identifier: identifier,
             content: content,
             trigger: trigger
         )
         
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Error scheduling leave notification: \(error)")
+                print("❌ Error scheduling leave notification: \(error.localizedDescription)")
+            } else {
+                print("✅ Successfully scheduled leave notification with ID: \(identifier) for \(Int(timeInterval/60)) minutes from now")
             }
         }
     }
