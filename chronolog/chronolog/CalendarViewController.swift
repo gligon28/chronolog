@@ -437,9 +437,73 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
         alert.setValue(attributedString, forKey: "attributedMessage")
         
         alert.addAction(UIAlertAction(title: "Close", style: .default))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { _ in
+            self.confirmDeleteEvent(event)
+        }))
         
         present(alert, animated: true)
     }
+    
+    private func confirmDeleteEvent(_ event: CustomEvent) {
+        let confirmAlert = UIAlertController(
+            title: "Delete Event?",
+            message: "Are you sure you want to delete \"\(event.title)\"? \n This action cannot be undone",
+            preferredStyle: .alert
+        )
+        
+        confirmAlert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        confirmAlert.addAction(UIAlertAction(title: "Delete", style: .destructive, handler: { _ in
+            self.deleteEventFromFirebase(event)
+        }))
+        
+        present(confirmAlert, animated: true)
+    }
+
+    private func deleteEventFromFirebase(_ event: CustomEvent) {
+        self.reloadData()
+        guard let userID = self.userID else { return }
+        let userEventsRef = db.collection("userEvents").document(userID).collection("events")
+        
+        // If you want to match on title, startTime, and endTime:
+        // (assuming these fields were stored in Firestore exactly)
+        guard let start = event.startTime, let end = event.endTime else { return }
+
+        userEventsRef
+            .whereField("title", isEqualTo: event.title)
+            .whereField("startTime", isEqualTo: start)
+            .whereField("endTime", isEqualTo: end)
+            .getDocuments { snapshot, error in
+                if let error = error {
+                    print("Error finding event to delete: \(error)")
+                    return
+                }
+                guard let docs = snapshot?.documents, !docs.isEmpty else {
+                    print("No matching event found to delete.")
+                    return
+                }
+                
+                // If multiple docs match, this will delete them all
+                for doc in docs {
+                    doc.reference.delete { err in
+                        if let err = err {
+                            print("Error deleting document: \(err)")
+                        } else {
+                            print("Successfully deleted document: \(doc.documentID)")
+                        }
+                    }
+                }
+                
+                // Optionally refresh your local events array and calendar
+                DispatchQueue.main.async {
+                    self.fetchEvents { updatedEvents in
+                        self.customEvents = updatedEvents
+                        self.reloadData()
+                    }
+                }
+            }
+    }
+
 }
 
 

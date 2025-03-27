@@ -204,7 +204,69 @@ class OpenAIAPIClient: OpenAIClient {
         
         return responseString
     }
+    
+    
 }
+
+extension OpenAIAPIClient {
+    /// Asks GPT-4 for an estimated duration (in minutes) given an event title + optional notes.
+    func getDurationEstimate(forTitle title: String, notes: String?) async throws -> Int {
+        // If notes is empty or nil, we’ll pass a placeholder
+        let notesContext = notes?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let safeNotes = (notesContext?.isEmpty == false) ? notesContext! : "No additional context."
+        
+        // Construct a user prompt that includes both the title and notes
+        let userPrompt = """
+        I have a task called "\(title)".
+        The user provided these notes: "\(safeNotes)"
+        Please estimate how many minutes this task might take.
+        Return ONLY a single integer (in minutes) with no extra text.
+        """
+
+        let messages: [[String: Any]] = [
+            ["role": "user", "content": userPrompt]
+        ]
+
+        let payload: [String: Any] = [
+            "model": "gpt-4o",
+            "messages": messages,
+            "temperature": 0.1,
+            "max_tokens": 100
+        ]
+
+        let url = URL(string: "https://api.openai.com/v1/chat/completions")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey ?? "")", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        guard let responseString = String(data: data, encoding: .utf8) else {
+            throw ScheduleError.decodingError
+        }
+        print("Raw response from model for duration estimate:\n\(responseString)\n")
+
+        // Decode as usual
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let openAIResponse = try decoder.decode(OpenAIResponse.self, from: data)
+        guard let content = openAIResponse.choices.first?.message.content else {
+            throw ScheduleError.decodingError
+        }
+
+        // Extract digits from the returned string
+        let digits = content.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: CharacterSet.decimalDigits.inverted)
+            .joined()
+
+        guard let intValue = Int(digits) else {
+            throw ScheduleError.decodingError
+        }
+        return intValue
+    }
+}
+
 
 // MARK: - Error Handling
 enum ScheduleError: Error {

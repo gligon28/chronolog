@@ -53,7 +53,7 @@ class SettingsViewController: UITableViewController {
             case 1:
                 cell.textLabel?.text = "Progress Tracking"
             case 2:
-                cell.textLabel?.text = "Another Feature"
+                cell.textLabel?.text = "Talking Clock"
             default:
                 cell.textLabel?.text = "Feature"
             }
@@ -146,8 +146,7 @@ class SettingsViewController: UITableViewController {
                 self.present(alert, animated: true)
             }
         }
-        
-    
+  
     func navigateToLogin() {
         if let sceneDelegate = UIApplication.shared.connectedScenes.first?.delegate as? SceneDelegate,
            let window = sceneDelegate.window {
