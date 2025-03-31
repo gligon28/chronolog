@@ -95,17 +95,22 @@ class CalendarViewController: DayViewController, UITabBarControllerDelegate {
     }
 
     func hideHandles(in eventView: UIView) {
-        // Look for handle-like views (circles or small views at the edges)
         for subview in eventView.subviews {
             let className = String(describing: type(of: subview))
             
-            // Look for potential handle views
+            // More aggressive criteria to hide handles
             if className.contains("Handle") ||
-               (subview.frame.width < 20 && subview.frame.height < 20) ||
+               className.contains("Resize") ||
+               className.contains("Control") ||
+               (subview.frame.width < 25 && subview.frame.height < 25 && subview.layer.cornerRadius > 0) ||
                subview is UIControl {
-                print("Hiding potential handle: \(subview)")
+                print("Hiding handle: \(className)")
                 subview.isHidden = true
+                subview.alpha = 0 // Add this for extra measure
             }
+            
+            // Also look for handles in this subview's subviews
+            hideHandles(in: subview)
         }
     }
 
