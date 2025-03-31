@@ -1677,10 +1677,33 @@ class AddEventViewController: UIViewController, MKLocalSearchCompleterDelegate {
         print("👤 Setting up travel notification for user: \(currentUser.uid)")
         print("📅 Event: \(event.title), Location: \(location)")
         
-        // Schedule a travel time check for this event
-        travelNotificationManager.scheduleTravelCheck(for: event)
+        // Check notifications authorization
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            print("📲 Notification authorization status: \(settings.authorizationStatus.rawValue)")
+            
+            if settings.authorizationStatus != .authorized {
+                print("⚠️ Notifications not authorized! Requesting permission...")
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+                    if let error = error {
+                        print("❌ Error requesting notifications permission: \(error)")
+                    } else if granted {
+                        print("✅ Notifications permission granted")
+                        DispatchQueue.main.async {
+                            self.travelNotificationManager.scheduleTravelCheck(for: event)
+                        }
+                    } else {
+                        print("❌ Notifications permission denied")
+                    }
+                }
+            } else {
+                print("✅ Notifications already authorized")
+                DispatchQueue.main.async {
+                    self.travelNotificationManager.scheduleTravelCheck(for: event)
+                }
+            }
+        }
         
-        print("✅ Travel check scheduled for event: \(event.title)")
+        print("✅ Travel check setup process initiated for event: \(event.title)")
     }
     
     func requestLocationPermission() {
